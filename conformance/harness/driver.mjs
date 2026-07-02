@@ -149,7 +149,7 @@ for (const b of behaviors) {
     // Pending: available runners must explicitly report "unimplemented".
     // A missing toolchain is tolerated only while the behavior is pending.
     ok = cells.every((cell, i) => !results[i].available || cell === 'unimplemented')
-    if (!ok) note = 'pending: available runners must report "unimplemented" (no skip, no early pass)'
+    if (!ok) note = 'pending: available runners must report "unimplemented"'
   }
   if (!ok) red = true
   table.push({ id: b.id, status: b.status, cells, ok, note })
