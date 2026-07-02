@@ -49,4 +49,4 @@ behaviors:
     assert: sign rejects a digest that is not exactly 32 bytes with invalidArgument, before any key access, on every binding.
   - id: auth.concurrentSignRejected
     status: pending
-    assert: a second concurrent auth-gated sign is rejected with an error.
+    assert: a second concurrent auth-gated sign is rejected with authInProgress rather than queued behind the first prompt.
