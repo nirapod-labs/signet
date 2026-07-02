@@ -29,4 +29,8 @@ public enum SignetError: Error, Equatable, Sendable {
     case hardwareError
     /// The operation is not supported on this platform.
     case unsupportedPlatform
+    /// The caller violated a locally-checkable precondition, for example a
+    /// digest that is not exactly 32 bytes. Rejected before any platform call;
+    /// never conflated with `hardwareError`.
+    case invalidArgument
 }
