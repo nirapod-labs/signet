@@ -17,6 +17,9 @@ behaviors:
   - id: tier.meetsFloorHonest
     status: pending
     assert: a successful strongest or atLeast return has meetsFloor=true; meetsFloor=false appears only on a bestEffort below-class result.
+  - id: tier.invalidatedKeyNoThrow
+    status: pending
+    assert: getSecurityTier does not throw on an invalidated-but-not-deleted key; it returns a report the caller can inspect.
   - id: provenance.appleNeverAttested
     status: pending
     assert: Apple SE reports evidence=seTokenPresent, never attested.
@@ -29,6 +32,12 @@ behaviors:
   - id: attestation.generationBoundChallenge
     status: pending
     assert: getAttestation reflects the generation-time challenge; there is no call-time challenge.
+  - id: attestation.noneHasEmptyChain
+    status: pending
+    assert: getAttestation returns format=none with an empty chain where the platform has no hardware key-attestation (Apple SE always).
+  - id: attestation.invalidatedMayReturnNoneWhereUnprobeable
+    status: pending
+    assert: a platform with no non-prompting invalidation probe may return format=none on an invalidated key rather than raising keyInvalidated (Apple SE); this divergence is contract-allowed, not a conformance failure.
   - id: error.oneClosedSet
     status: pending
     assert: every binding raises exactly the names in errors.json (spelling userCanceled).
