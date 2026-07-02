@@ -1,0 +1,18 @@
+name: ci-android
+on:
+  push:
+    paths: ["android/**", "conformance/**", ".github/workflows/ci-android.yml"]
+  pull_request:
+    paths: ["android/**", "conformance/**"]
+permissions:
+  contents: read
+jobs:
+  android-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build + test signet-android-core
+        run: |
+          echo "ci-android: signet-android-core is not yet implemented."
+          echo "Present and red until android/ lands (Gradle + instrumented StrongBox/TEE device matrix)."
+          exit 1
