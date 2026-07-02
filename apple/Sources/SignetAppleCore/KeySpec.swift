@@ -24,10 +24,16 @@ public struct KeySpec: Sendable, Equatable {
 
 /// An opaque reference to a generated key. It carries only the alias; the key
 /// material stays in hardware and is addressed by name at the key store.
+///
+/// The initializer is public: a handle is a reconstructible token, not a live
+/// reference. A binding that persisted the alias rebuilds the handle across
+/// process restarts without holding the original object. Building a handle
+/// grants no access on its own; it names a key, and `exists`, `delete`, and
+/// `getSecurityTier` already address a key by alias.
 public struct KeyHandle: Sendable, Equatable {
     public let alias: String
 
-    init(alias: String) {
+    public init(alias: String) {
         self.alias = alias
     }
 }

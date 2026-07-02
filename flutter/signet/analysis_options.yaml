@@ -1,4 +1,10 @@
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  exclude:
+    # Pigeon input spec: a codegen definition, not shipped code. The generated
+    # outputs (lib/src/messages.g.dart) carry their own ignore headers.
+    - pigeons/**
+
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options
