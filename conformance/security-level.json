@@ -16,6 +16,6 @@
       "software": ["software"]
     },
     "order": ["discreteSecure", "trustedEnvironment", "software"],
-    "defaultFloor": "platformStrongest"
+    "defaultPolicy": "strongest (TierPolicy; see shapes.json)"
   }
 }
