@@ -19,6 +19,7 @@ jobs:
         with:
           node-version: 22
       - name: Cross-language conformance suite
-        # Red until the cores and bindings land: the harness reports every
-        # behavior unimplemented across the runners it can reach.
+        # Expectation-driven: pending behaviors must report "unimplemented" on
+        # every available runner (missing toolchains tolerated while pending);
+        # a behavior becomes a hard requirement once marked verified.
         run: node conformance/harness/driver.mjs

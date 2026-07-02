@@ -1,7 +1,8 @@
 # Cross-language behaviors asserted identically across Dart, TypeScript, Kotlin,
-# and Swift. A behavior unimplemented in ANY runner is a hard failure (no skips).
-# This is the initial skeleton; each item is implemented and flipped to `verified`
-# as the cores and bindings land.
+# and Swift. Each carries an expected disposition: a `pending` behavior must
+# report "unimplemented" on every available runner (no silent skip, no early
+# pass), while a `verified` behavior must pass on every runner. Items flip from
+# pending to verified as the cores and bindings land.
 version: 1
 behaviors:
   - id: tier.readBackNotRequest

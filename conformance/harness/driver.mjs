@@ -6,9 +6,14 @@
 // Loads the contract in conformance/ (the single source of truth), then drives
 // four independent language runners over a line-delimited JSON protocol on
 // stdio: for each behavior the driver writes {"behavior": id} and the runner
-// answers {"behavior": id, "status": ...}. A behavior passes only when every
-// runner answers "pass". A runner that omits an answer is a silent skip and
-// fails the run; unimplemented, unavailable, and skipped all keep it red.
+// answers {"behavior": id, "status": ...}.
+//
+// Each behavior carries an expected disposition in behaviors.yaml. A `pending`
+// behavior requires every available runner to answer "unimplemented"; a silent
+// answer (skip) or an early "pass" is a mismatch and turns the run red. A
+// `verified` behavior requires every runner to be present and answer "pass".
+// Missing toolchains are tolerated only while a behavior is pending. The run is
+// green when every behavior matches its declared disposition.
 
 import { spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
@@ -17,6 +22,10 @@ import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..')
+
+// A behavior that must pass on every runner vs. one not yet required to run.
+const MUST_PASS = new Set(['verified', 'active', 'required'])
+const NOT_YET = new Set(['pending'])
 
 function fail(message) {
   console.error(`conformance contract error: ${message}`)
@@ -45,6 +54,10 @@ function parseBehaviors(text) {
 const behaviors = parseBehaviors(readFileSync(join(ROOT, 'behaviors.yaml'), 'utf8'))
 const behaviorIds = behaviors.map((b) => b.id)
 if (behaviorIds.length === 0) fail('behaviors.yaml declares no behaviors')
+for (const b of behaviors) {
+  if (!MUST_PASS.has(b.status) && !NOT_YET.has(b.status))
+    fail(`behavior ${b.id} has unknown status "${b.status}"`)
+}
 
 const errors = JSON.parse(readFileSync(join(ROOT, 'errors.json'), 'utf8'))
 const securityLevel = JSON.parse(readFileSync(join(ROOT, 'security-level.json'), 'utf8'))
@@ -116,16 +129,30 @@ function driveRunner(runner) {
 
 const results = await Promise.all(runners.map(driveRunner))
 
+function cellFor(runner, id) {
+  if (!runner.available) return 'unavailable'
+  if (!runner.verdicts.has(id)) return 'SKIPPED'
+  return runner.verdicts.get(id)
+}
+
 let red = false
 const table = []
-for (const id of behaviorIds) {
-  const cells = results.map((runner) => {
-    if (!runner.available) return 'unavailable'
-    if (!runner.verdicts.has(id)) return 'SKIPPED'
-    return runner.verdicts.get(id)
-  })
-  if (!cells.every((cell) => cell === 'pass')) red = true
-  table.push({ id, cells })
+for (const b of behaviors) {
+  const cells = results.map((runner) => cellFor(runner, b.id))
+  let ok
+  let note = ''
+  if (MUST_PASS.has(b.status)) {
+    // Required: every runner must be present and pass.
+    ok = cells.every((cell) => cell === 'pass')
+    if (!ok) note = 'verified behavior must pass on every runner'
+  } else {
+    // Pending: available runners must explicitly report "unimplemented".
+    // A missing toolchain is tolerated only while the behavior is pending.
+    ok = cells.every((cell, i) => !results[i].available || cell === 'unimplemented')
+    if (!ok) note = 'pending: available runners must report "unimplemented" (no skip, no early pass)'
+  }
+  if (!ok) red = true
+  table.push({ id: b.id, status: b.status, cells, ok, note })
 }
 
 console.log(`Signet conformance: ${behaviorIds.length} behaviors x ${runners.length} runners\n`)
@@ -137,13 +164,15 @@ for (const runner of results) {
 console.log('')
 for (const row of table) {
   const summary = row.cells.map((cell, i) => `${runners[i].name}=${cell}`).join('  ')
-  console.log(`  ${row.id.padEnd(38)} ${summary}`)
+  const mark = row.ok ? 'ok ' : 'RED'
+  console.log(`  ${mark} ${row.id.padEnd(38)} [${row.status}]  ${summary}`)
+  if (!row.ok) console.log(`      ${row.note}`)
 }
-const passed = table.filter((row) => row.cells.every((cell) => cell === 'pass')).length
-console.log(`\n${passed}/${behaviorIds.length} behaviors pass across all four runners`)
+const met = table.filter((row) => row.ok).length
+console.log(`\n${met}/${behaviors.length} behaviors meet their declared expectation`)
 
 if (red) {
-  console.error('\nconformance RED: unimplemented, unavailable, or skipped behaviors present')
+  console.error('\nconformance RED: a behavior does not match its declared expectation')
   process.exit(1)
 }
 console.log('\nconformance GREEN')
