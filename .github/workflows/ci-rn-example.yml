@@ -3,16 +3,10 @@ on:
   push:
     paths:
       - "react-native/SignetApp/**"
-      - "react-native/react-native-signet/**"
-      - "apple/**"
-      - "android/**"
       - ".github/workflows/ci-rn-example.yml"
   pull_request:
     paths:
       - "react-native/SignetApp/**"
-      - "react-native/react-native-signet/**"
-      - "apple/**"
-      - "android/**"
       - ".github/workflows/ci-rn-example.yml"
 permissions:
   contents: read
@@ -21,7 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build the React Native example app
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Typecheck the React Native example app
         run: |
-          echo "react-native example build is not yet wired"
-          exit 1
+          cd react-native/SignetApp
+          pnpm install --frozen-lockfile
+          pnpm exec tsc --noEmit
