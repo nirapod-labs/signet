@@ -2,14 +2,15 @@
 // SPDX-FileCopyrightText: 2026 Nirapod Labs
 
 import Foundation
+import Security
 import Testing
 @testable import SignetAppleCore
 
 /// Secure Enclave lifecycle behavior. These assertions need a process that can
 /// reach the Secure Enclave and the data-protection keychain: a signed app on
 /// Enclave hardware, or the device lane. An unsigned `swift test` binary cannot;
-/// each test probes first and steps aside where the Enclave is unreachable.
-/// The device lane is the backstop for the stepped-aside path.
+/// each test probes first and steps aside where the Enclave is unreachable. The
+/// device lane is the backstop for the stepped-aside path.
 @Suite struct KeyLifecycleTests {
     let store = SecureEnclaveKeyStore()
 
@@ -74,5 +75,33 @@ import Testing
             // one of these. Any other error fails the test. The device lane
             // configures auth and verifies the success path.
         }
+    }
+
+    @Test func privateKeyIsNotExportable() throws {
+        guard secureEnclaveReachable() else { return }
+        let alias = "signet.export.\(UUID().uuidString)"
+        defer { try? store.delete(alias: alias) }
+        _ = try store.generateKey(KeySpec(alias: alias))
+
+        // The Secure Enclave private key has no external representation.
+        let privateKey = try store.fetchKey(alias: alias)
+        #expect(SecKeyCopyExternalRepresentation(privateKey, nil) == nil)
+    }
+
+    @Test func getPublicKeyReturnsRawAndSpki() throws {
+        guard secureEnclaveReachable() else { return }
+        let alias = "signet.pub.\(UUID().uuidString)"
+        defer { try? store.delete(alias: alias) }
+        let (handle, _) = try store.generateKey(KeySpec(alias: alias))
+
+        let raw = try store.getPublicKey(handle)
+        #expect(raw.format == .rawX962)
+        #expect(raw.bytes.count == 65)
+        #expect(raw.bytes.first == 0x04)  // uncompressed point
+
+        let spki = try store.getPublicKey(handle, format: .spki)
+        #expect(spki.format == .spki)
+        #expect(spki.bytes.count == 91)
+        #expect(spki.bytes.suffix(65) == raw.bytes)  // wraps the same point
     }
 }

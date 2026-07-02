@@ -72,6 +72,29 @@ public struct SecureEnclaveKeyStore: Sendable {
         return (KeyHandle(alias: spec.alias), report)
     }
 
+    /// Returns the public key for a handle. `rawX962` is the native Secure
+    /// Enclave output (`0x04 || X || Y`); `spki` wraps it in a
+    /// SubjectPublicKeyInfo. There is no matching private-key accessor.
+    ///
+    /// - Throws: `notFound` if no key exists for the alias; `hardwareError` if
+    ///   the public key cannot be read.
+    public func getPublicKey(
+        _ handle: KeyHandle,
+        format: PublicKey.Format = .rawX962
+    ) throws -> PublicKey {
+        let key = try fetchKey(alias: handle.alias)
+        guard let publicKey = SecKeyCopyPublicKey(key),
+              let raw = SecKeyCopyExternalRepresentation(publicKey, nil) as Data? else {
+            throw SignetError.hardwareError
+        }
+        switch format {
+        case .rawX962:
+            return PublicKey(format: .rawX962, bytes: raw)
+        case .spki:
+            return PublicKey(format: .spki, bytes: Self.spki(fromRawX962: raw))
+        }
+    }
+
     /// Reports whether a key exists for the alias without materializing a handle.
     public func exists(alias: String) -> Bool {
         let query: [String: Any] = [
@@ -99,6 +122,31 @@ public struct SecureEnclaveKeyStore: Sendable {
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw SignetError.hardwareError
         }
+    }
+
+    /// Fetches the private key reference for an alias. Internal by design: the
+    /// private key is used in-process and never returned to a caller; there is
+    /// no public accessor for it.
+    ///
+    /// - Throws: `notFound` if no key exists; `hardwareError` on any other
+    ///   keychain failure.
+    func fetchKey(alias: String) throws -> SecKey {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassKey,
+            kSecAttrApplicationTag as String: tag(for: alias),
+            kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecUseDataProtectionKeychain as String: true,
+            kSecReturnRef as String: true,
+        ]
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        guard status == errSecSuccess else {
+            throw status == errSecItemNotFound ? SignetError.notFound : SignetError.hardwareError
+        }
+        guard let item, CFGetTypeID(item) == SecKeyGetTypeID() else {
+            throw SignetError.hardwareError
+        }
+        return item as! SecKey
     }
 
     /// The `SecAccessControlCreateFlags` for a policy. `.privateKeyUsage` is
@@ -131,6 +179,19 @@ public struct SecureEnclaveKeyStore: Sendable {
         case .biometricOrDeviceCredential:
             return .biometricOrDeviceCredential
         }
+    }
+
+    /// Wraps a P-256 X9.63 public key (`0x04 || X || Y`) in a DER
+    /// SubjectPublicKeyInfo. The 26-byte prefix is the fixed id-ecPublicKey with
+    /// prime256v1 and the BIT STRING header for the 65-byte point.
+    static func spki(fromRawX962 raw: Data) -> Data {
+        let header: [UInt8] = [
+            0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86,
+            0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a,
+            0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x03,
+            0x42, 0x00,
+        ]
+        return Data(header) + raw
     }
 
     /// Maps a `SecKeyCreateRandomKey` failure code to the closed error set.

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Nirapod Labs
 
+import Foundation
 import Security
 import Testing
 @testable import SignetAppleCore
@@ -59,7 +60,7 @@ import Testing
     let bioOrPasscode = AccessControlPolicy(authRequirement: .biometricOrDeviceCredential)
     // No presence check: private-key usage only.
     #expect(SecureEnclaveKeyStore.accessFlags(for: .none) == .privateKeyUsage)
-    // Biometric only, default: the currently-enrolled set (dies on re-enrollment).
+    // Biometric only, default: the currently-enrolled set (invalidated on re-enrollment).
     #expect(SecureEnclaveKeyStore.accessFlags(for: bioOnly) == [.privateKeyUsage, .biometryCurrentSet])
     // Biometric only, surviving re-enrollment: any enrolled biometry.
     #expect(SecureEnclaveKeyStore.accessFlags(for: bioOnlyAny) == [.privateKeyUsage, .biometryAny])
@@ -76,4 +77,18 @@ import Testing
     #expect(SecureEnclaveKeyStore.authClass(for: .none) == .none)
     #expect(SecureEnclaveKeyStore.authClass(for: bio) == .biometricOnly)
     #expect(SecureEnclaveKeyStore.authClass(for: bioOrPasscode) == .biometricOrDeviceCredential)
+}
+
+@Test func spkiWrapsTheP256Point() {
+    let point = Data([0x04] + [UInt8](repeating: 0xAB, count: 64))
+    let spki = SecureEnclaveKeyStore.spki(fromRawX962: point)
+    let header: [UInt8] = [
+        0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86,
+        0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a,
+        0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x03,
+        0x42, 0x00,
+    ]
+    #expect(spki.count == 91)
+    #expect(Array(spki.prefix(26)) == header)
+    #expect(spki.suffix(65) == point)
 }
