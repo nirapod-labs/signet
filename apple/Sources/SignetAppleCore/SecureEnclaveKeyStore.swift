@@ -101,8 +101,9 @@ public struct SecureEnclaveKeyStore: Sendable {
     ///
     /// - Throws: `invalidArgument` if the digest is not exactly 32 bytes;
     ///   `notFound` if no key exists; `hardwareError` on a signing failure. For
-    ///   a gated key, an authentication cancel or failure also surfaces as
-    ///   `hardwareError`.
+    ///   a gated key, an authentication cancel, an auth failure, or a
+    ///   re-enrollment invalidation also surfaces as `hardwareError`; `sign`
+    ///   discards the underlying error and does not distinguish them.
     public func sign(
         _ handle: KeyHandle,
         digest: Data,
@@ -133,8 +134,12 @@ public struct SecureEnclaveKeyStore: Sendable {
 
     /// Re-reads the tier of an existing key. Does not throw on an invalidated
     /// key. `requested` and `authEnforced` come back nil (unreadable on Apple);
-    /// `invalidated` is `false` here, and `keyInvalidated` on `sign` is
-    /// authoritative. `meetsFloor` is true against every policy (the Secure
+    /// `invalidated` is `false` here. The Secure Enclave has no non-prompting
+    /// invalidation probe: re-enrollment invalidation surfaces only as an
+    /// ordinary authentication failure at signing time, with no dedicated code,
+    /// and `sign` discards the underlying error and maps every failure to
+    /// `hardwareError`, never `keyInvalidated`. This weaker probing is
+    /// contract-allowed. `meetsFloor` is true against every policy (the Secure
     /// Enclave is Apple's strongest tier).
     ///
     /// - Throws: `notFound` if no key exists for the alias.
