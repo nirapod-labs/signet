@@ -4,15 +4,11 @@ on:
     paths:
       - "flutter/SignetApp/**"
       - "flutter/signet/**"
-      - "apple/**"
-      - "android/**"
       - ".github/workflows/ci-flutter-example.yml"
   pull_request:
     paths:
       - "flutter/SignetApp/**"
       - "flutter/signet/**"
-      - "apple/**"
-      - "android/**"
       - ".github/workflows/ci-flutter-example.yml"
 permissions:
   contents: read
@@ -21,7 +17,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build the Flutter example app
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Analyze the Flutter example app
         run: |
-          echo "flutter example build is not yet wired"
-          exit 1
+          cd flutter/SignetApp
+          flutter pub get
+          flutter analyze
