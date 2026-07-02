@@ -1,8 +1,27 @@
 name: fence
 on:
   push:
-    paths-ignore: ["docs/**", "**/*.md", "LICENSE", "NOTICE"]
+    paths:
+      - "apple/**"
+      - "android/**"
+      - "windows/**"
+      - "kmp/**"
+      - "react-native/**"
+      - "flutter/**"
+      - "conformance/**"
+      - "scripts/fence-check.sh"
+      - ".github/workflows/fence.yml"
   pull_request:
+    paths:
+      - "apple/**"
+      - "android/**"
+      - "windows/**"
+      - "kmp/**"
+      - "react-native/**"
+      - "flutter/**"
+      - "conformance/**"
+      - "scripts/fence-check.sh"
+      - ".github/workflows/fence.yml"
 permissions:
   contents: read
 jobs:
@@ -11,7 +30,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Static non-custodial fence
-        run: |
-          echo "fence: static non-custodial assertions are not yet implemented (see scripts/fence-check.sh)."
-          echo "Will assert: no private-key export symbol in any surface; no key material on any binding boundary."
-          exit 1
+        run: bash scripts/fence-check.sh

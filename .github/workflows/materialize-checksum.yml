@@ -1,7 +1,27 @@
 name: materialize-checksum
 on:
   push:
+    paths:
+      - "VERSION"
+      - "sdk-versions.json"
+      - "package.json"
+      - "react-native/react-native-signet/package.json"
+      - "conformance/package.json"
+      - "flutter/signet/pubspec.yaml"
+      - "kmp/signet/build.gradle.kts"
+      - "tools/release/**"
+      - ".github/workflows/materialize-checksum.yml"
   pull_request:
+    paths:
+      - "VERSION"
+      - "sdk-versions.json"
+      - "package.json"
+      - "react-native/react-native-signet/package.json"
+      - "conformance/package.json"
+      - "flutter/signet/pubspec.yaml"
+      - "kmp/signet/build.gradle.kts"
+      - "tools/release/**"
+      - ".github/workflows/materialize-checksum.yml"
 permissions:
   contents: read
 jobs:

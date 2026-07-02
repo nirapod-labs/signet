@@ -1,7 +1,27 @@
 name: license-header
 on:
   push:
+    paths:
+      - "apple/**"
+      - "android/**"
+      - "windows/**"
+      - "kmp/**"
+      - "react-native/**"
+      - "flutter/**"
+      - "conformance/**"
+      - "scripts/check-license-headers.sh"
+      - ".github/workflows/license-header.yml"
   pull_request:
+    paths:
+      - "apple/**"
+      - "android/**"
+      - "windows/**"
+      - "kmp/**"
+      - "react-native/**"
+      - "flutter/**"
+      - "conformance/**"
+      - "scripts/check-license-headers.sh"
+      - ".github/workflows/license-header.yml"
 permissions:
   contents: read
 jobs:

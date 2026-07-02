@@ -1,17 +1,23 @@
-name: lint
+name: biome
 on:
   push:
     paths:
+      - "**/*.js"
+      - "**/*.mjs"
       - "**/*.ts"
       - "**/*.tsx"
-      - "**/*.js"
       - "**/*.json"
-      - "**/*.jsonc"
       - "biome.json"
-      - "package.json"
-      - "pnpm-lock.yaml"
       - ".github/workflows/lint.yml"
   pull_request:
+    paths:
+      - "**/*.js"
+      - "**/*.mjs"
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "**/*.json"
+      - "biome.json"
+      - ".github/workflows/lint.yml"
 permissions:
   contents: read
 jobs:

@@ -1,0 +1,25 @@
+name: flutter-lib
+on:
+  push:
+    paths:
+      - "flutter/signet/**"
+      - "apple/**"
+      - "android/**"
+      - ".github/workflows/ci-flutter-lib.yml"
+  pull_request:
+    paths:
+      - "flutter/signet/**"
+      - "apple/**"
+      - "android/**"
+      - ".github/workflows/ci-flutter-lib.yml"
+permissions:
+  contents: read
+jobs:
+  flutter-lib:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Analyze the Flutter plugin
+        run: |
+          echo "flutter plugin analyze is not yet wired"
+          exit 1

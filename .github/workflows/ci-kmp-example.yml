@@ -1,0 +1,27 @@
+name: kmp-example
+on:
+  push:
+    paths:
+      - "kmp/SignetApp/**"
+      - "kmp/signet/**"
+      - "apple/**"
+      - "android/**"
+      - ".github/workflows/ci-kmp-example.yml"
+  pull_request:
+    paths:
+      - "kmp/SignetApp/**"
+      - "kmp/signet/**"
+      - "apple/**"
+      - "android/**"
+      - ".github/workflows/ci-kmp-example.yml"
+permissions:
+  contents: read
+jobs:
+  kmp-example:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the KMP example app
+        run: |
+          echo "kotlin multiplatform example build is not yet wired"
+          exit 1

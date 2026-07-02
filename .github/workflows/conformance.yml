@@ -1,8 +1,13 @@
 name: conformance
 on:
   push:
-    paths: ["conformance/**", ".github/workflows/conformance.yml"]
+    paths:
+      - "conformance/**"
+      - ".github/workflows/conformance.yml"
   pull_request:
+    paths:
+      - "conformance/**"
+      - ".github/workflows/conformance.yml"
 permissions:
   contents: read
 jobs:
@@ -14,7 +19,6 @@ jobs:
         with:
           node-version: 22
       - name: Cross-language conformance suite
-        # Red until the cores and bindings land: the TypeScript runner answers
-        # every behavior "unimplemented" and the Dart, Kotlin, and Swift
-        # toolchains are added per runner as their bindings arrive.
+        # Red until the cores and bindings land: the harness reports every
+        # behavior unimplemented across the runners it can reach.
         run: node conformance/harness/driver.mjs
