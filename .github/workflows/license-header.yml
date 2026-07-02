@@ -1,0 +1,13 @@
+name: license-header
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  license-header:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check SPDX headers on first-party source
+        run: bash scripts/check-license-headers.sh
