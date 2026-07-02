@@ -1,15 +1,11 @@
 {
   "$schema": "https://nitro.margelo.com/nitro.schema.json",
-  "cxxNamespace": [
-    "signet"
-  ],
+  "cxxNamespace": ["signet"],
   "ios": {
     "iosModuleName": "Signet"
   },
   "android": {
-    "androidNamespace": [
-      "signet"
-    ],
+    "androidNamespace": ["signet"],
     "androidCxxLibName": "Signet"
   },
   "autolinking": {
@@ -24,7 +20,5 @@
       }
     }
   },
-  "ignorePaths": [
-    "**/node_modules"
-  ]
+  "ignorePaths": ["**/node_modules"]
 }

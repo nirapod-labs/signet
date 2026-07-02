@@ -8,12 +8,12 @@
 // stdio: for each behavior the driver writes {"behavior": id} and the runner
 // answers {"behavior": id, "status": ...}. A behavior passes only when every
 // runner answers "pass". A runner that omits an answer is a silent skip and
-// fails the run, so unimplemented, unavailable, and skipped all keep it red.
+// fails the run; unimplemented, unavailable, and skipped all keep it red.
 
-import { readFileSync } from 'node:fs'
 import { spawn } from 'node:child_process'
-import { fileURLToPath } from 'node:url'
+import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..')
@@ -51,8 +51,10 @@ const securityLevel = JSON.parse(readFileSync(join(ROOT, 'security-level.json'),
 const shapes = JSON.parse(readFileSync(join(ROOT, 'shapes.json'), 'utf8'))
 const vectors = JSON.parse(readFileSync(join(ROOT, 'vectors.json'), 'utf8'))
 
-if (!Array.isArray(errors.errors) || errors.errors.length === 0) fail('errors.json has no closed error set')
-if (!Array.isArray(securityLevel.securityLevel?.values)) fail('security-level.json has no SecurityLevel values')
+if (!Array.isArray(errors.errors) || errors.errors.length === 0)
+  fail('errors.json has no closed error set')
+if (!Array.isArray(securityLevel.securityLevel?.values))
+  fail('security-level.json has no SecurityLevel values')
 if (!('signatureVectors' in vectors)) fail('vectors.json is missing signatureVectors')
 
 // Boundary security check: the vocabulary spec must not be able to name a private key.
@@ -128,7 +130,9 @@ for (const id of behaviorIds) {
 
 console.log(`Signet conformance: ${behaviorIds.length} behaviors x ${runners.length} runners\n`)
 for (const runner of results) {
-  console.log(`  runner ${runner.name.padEnd(11)} ${runner.available ? 'ran' : 'UNAVAILABLE (toolchain missing)'}`)
+  console.log(
+    `  runner ${runner.name.padEnd(11)} ${runner.available ? 'ran' : 'UNAVAILABLE (toolchain missing)'}`,
+  )
 }
 console.log('')
 for (const row of table) {

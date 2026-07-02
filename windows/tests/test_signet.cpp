@@ -3,7 +3,7 @@
 
 #include "signet/signet.hpp"
 
-// Return-code test: independent of NDEBUG, so it holds in release builds too.
+// Return-code test, not assert: holds under NDEBUG (release).
 int main() {
     if (signet::kVersion.empty()) {
         return 1;

@@ -4,7 +4,7 @@ react-native-signet is a react native package built with Nitro
 
 [![Version](https://img.shields.io/npm/v/react-native-signet.svg)](https://www.npmjs.com/package/react-native-signet)
 [![Downloads](https://img.shields.io/npm/dm/react-native-signet.svg)](https://www.npmjs.com/package/react-native-signet)
-[![License](https://img.shields.io/npm/l/react-native-signet.svg)](https://github.com/patrickkabwe/react-native-signet/LICENSE)
+[![License](https://img.shields.io/npm/l/react-native-signet.svg)](https://github.com/nirapod-labs/signet/blob/main/LICENSE)
 
 ## Requirements
 
