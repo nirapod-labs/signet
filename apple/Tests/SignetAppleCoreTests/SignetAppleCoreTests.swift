@@ -116,7 +116,7 @@ import Testing
 @Test func signRejectsAWrongLengthDigest() {
     let store = SecureEnclaveKeyStore()
     // The digest guard fires before any keychain access; no Enclave is needed.
-    #expect(throws: SignetError.hardwareError) {
+    #expect(throws: SignetError.invalidArgument) {
         _ = try store.sign(KeyHandle(alias: "signet.guard.unused"), digest: Data(count: 20))
     }
 }

@@ -35,6 +35,9 @@ behaviors:
   - id: sign.encodingParity
     status: pending
     assert: SignOptions encoding and normalizeLowS behave identically across bindings.
+  - id: sign.rejectsWrongLengthDigest
+    status: pending
+    assert: sign rejects a digest that is not exactly 32 bytes with invalidArgument, before any key access, on every binding.
   - id: auth.concurrentSignRejected
     status: pending
     assert: a second concurrent auth-gated sign is rejected with an error.

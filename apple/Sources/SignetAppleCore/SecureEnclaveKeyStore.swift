@@ -96,20 +96,20 @@ public struct SecureEnclaveKeyStore: Sendable {
     }
 
     /// Signs a 32-byte digest with the key and encodes per `options`. A
-    /// wrong-length digest is rejected before any keychain access. The closed
-    /// error set has no invalid-input case; a bad length surfaces as
-    /// `hardwareError`.
+    /// wrong-length digest is rejected with `invalidArgument` before any
+    /// keychain access.
     ///
-    /// - Throws: `notFound` if no key exists; `hardwareError` on a bad digest
-    ///   length or a signing failure. For a gated key, an authentication cancel
-    ///   or failure also surfaces as `hardwareError`.
+    /// - Throws: `invalidArgument` if the digest is not exactly 32 bytes;
+    ///   `notFound` if no key exists; `hardwareError` on a signing failure. For
+    ///   a gated key, an authentication cancel or failure also surfaces as
+    ///   `hardwareError`.
     public func sign(
         _ handle: KeyHandle,
         digest: Data,
         options: SignOptions = SignOptions()
     ) throws -> Data {
         guard digest.count == 32 else {
-            throw SignetError.hardwareError
+            throw SignetError.invalidArgument
         }
         let key = try fetchKey(alias: handle.alias)
         guard let der = SecKeyCreateSignature(
