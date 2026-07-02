@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "SecurityTierReport": {
     "achieved": "SecurityLevel",
-    "requested": "SecurityLevel",
+    "requested": "TierPolicy",
     "meetsFloor": "bool",
     "evidence": "TierEvidence",
     "authEnforced": "AuthClass",
@@ -20,10 +20,22 @@
   },
   "KeySpec": {
     "alias": "string",
-    "requiredMinTier": "SecurityLevel (default: platformStrongest)",
-    "allowDowngrade": "bool (default false)",
+    "tierPolicy": "TierPolicy (default: strongest)",
     "accessControl": "AccessControlPolicy",
     "attestationChallenge": "bytes? (bound at generation; there is no call-time challenge)"
+  },
+  "TierPolicy": {
+    "variants": {
+      "strongest": "Device's best hardware tier; fails unavailableTier if no hardware is available (never returns software). Default.",
+      "atLeast(HardwareClass)": "Hard floor by class; fails unavailableTier below the class.",
+      "bestEffort": "Never fails on tier; may return tee/software with meetsFloor=false and honest evidence (the only variant that returns software)."
+    },
+    "default": "strongest",
+    "note": "Selection is by class, never a concrete SecurityLevel; the achieved level is in SecurityTierReport.achieved."
+  },
+  "HardwareClass": {
+    "values": ["discreteSecure", "trustedEnvironment"],
+    "note": "The atLeast(...) floor. discreteSecure = {secureEnclave, strongBox, tpm}; trustedEnvironment = {tee}. Matches security-level.json partialOrder classes."
   },
   "AccessControlPolicy": {
     "authRequirement": ["none", "biometricOnly", "biometricOrDeviceCredential"],
@@ -40,7 +52,7 @@
     "bytes": "bytes"
   },
   "primitives": {
-    "generateKey": "(KeySpec) -> (KeyHandle, SecurityTierReport). FAILS unavailableTier below floor unless allowDowngrade:true; existing alias FAILS keyAlreadyExists.",
+    "generateKey": "(KeySpec) -> (KeyHandle, SecurityTierReport). Tier per KeySpec.tierPolicy (strongest/atLeast fail unavailableTier below floor; bestEffort never fails on tier); existing alias FAILS keyAlreadyExists.",
     "sign": "(KeyHandle, digest[32], SignOptions?) -> Signature. Async; host-UI biometric callback; a second concurrent auth-gated sign is rejected.",
     "getPublicKey": "(KeyHandle) -> PublicKey",
     "getAttestation": "(KeyHandle) -> AttestationResult. No call-time challenge (bound at generateKey).",
