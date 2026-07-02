@@ -170,6 +170,7 @@ public struct SecureEnclaveKeyStore: Sendable {
             kSecClass as String: kSecClassKey,
             kSecAttrApplicationTag as String: tag(for: alias),
             kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecAttrTokenID as String: kSecAttrTokenIDSecureEnclave,
             kSecUseDataProtectionKeychain as String: true,
             kSecReturnRef as String: false,
         ]
@@ -204,6 +205,7 @@ public struct SecureEnclaveKeyStore: Sendable {
             kSecClass as String: kSecClassKey,
             kSecAttrApplicationTag as String: tag(for: alias),
             kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecAttrTokenID as String: kSecAttrTokenIDSecureEnclave,
             kSecUseDataProtectionKeychain as String: true,
             kSecReturnRef as String: true,
         ]
