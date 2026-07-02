@@ -104,4 +104,29 @@ import Testing
         #expect(spki.bytes.count == 91)
         #expect(spki.bytes.suffix(65) == raw.bytes)  // wraps the same point
     }
+
+    @Test func signProducesAVerifiableSignature() throws {
+        guard secureEnclaveReachable() else { return }
+        let alias = "signet.sign.\(UUID().uuidString)"
+        defer { try? store.delete(alias: alias) }
+        let (handle, _) = try store.generateKey(KeySpec(alias: alias))
+        let digest = Data((0..<32).map { UInt8($0) })
+
+        let der = try store.sign(handle, digest: digest)
+        #expect(der.first == 0x30)  // DER SEQUENCE
+
+        // The signature verifies against the key's public half.
+        let privateKey = try store.fetchKey(alias: alias)
+        let publicKey = try #require(SecKeyCopyPublicKey(privateKey))
+        #expect(SecKeyVerifySignature(
+            publicKey,
+            .ecdsaSignatureDigestX962SHA256,
+            digest as CFData,
+            der as CFData,
+            nil
+        ))
+
+        let raw = try store.sign(handle, digest: digest, options: SignOptions(encoding: .rawRS))
+        #expect(raw.count == 64)
+    }
 }

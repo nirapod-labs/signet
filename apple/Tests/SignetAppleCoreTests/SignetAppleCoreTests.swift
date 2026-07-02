@@ -92,3 +92,31 @@ import Testing
     #expect(Array(spki.prefix(26)) == header)
     #expect(spki.suffix(65) == point)
 }
+
+@Test func derToRawRSConvertsAndPads() {
+    // SEQUENCE { INTEGER 1, INTEGER 2 } -> r=1, s=2 in the low byte of each half.
+    let small = SecureEnclaveKeyStore.derToRawRS(Data([0x30, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01, 0x02]))
+    #expect(small?.count == 64)
+    #expect(small?[31] == 0x01)
+    #expect(small?[63] == 0x02)
+
+    // High-bit components carry a DER 0x00 pad that must be stripped.
+    let padded = SecureEnclaveKeyStore.derToRawRS(
+        Data([0x30, 0x08, 0x02, 0x02, 0x00, 0x80, 0x02, 0x02, 0x00, 0x81])
+    )
+    #expect(padded?.count == 64)
+    #expect(padded?[31] == 0x80)
+    #expect(padded?[63] == 0x81)
+
+    // Malformed DER returns nil, never a wrong-length signature.
+    #expect(SecureEnclaveKeyStore.derToRawRS(Data([0x31, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01, 0x02])) == nil)
+    #expect(SecureEnclaveKeyStore.derToRawRS(Data()) == nil)
+}
+
+@Test func signRejectsAWrongLengthDigest() {
+    let store = SecureEnclaveKeyStore()
+    // The digest guard fires before any keychain access; no Enclave is needed.
+    #expect(throws: SignetError.hardwareError) {
+        _ = try store.sign(KeyHandle(alias: "signet.guard.unused"), digest: Data(count: 20))
+    }
+}

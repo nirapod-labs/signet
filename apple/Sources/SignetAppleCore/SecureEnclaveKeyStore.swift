@@ -95,6 +95,42 @@ public struct SecureEnclaveKeyStore: Sendable {
         }
     }
 
+    /// Signs a 32-byte digest with the key and encodes per `options`. A
+    /// wrong-length digest is rejected before any keychain access. The closed
+    /// error set has no invalid-input case; a bad length surfaces as
+    /// `hardwareError`.
+    ///
+    /// - Throws: `notFound` if no key exists; `hardwareError` on a bad digest
+    ///   length or a signing failure. For a gated key, an authentication cancel
+    ///   or failure also surfaces as `hardwareError`.
+    public func sign(
+        _ handle: KeyHandle,
+        digest: Data,
+        options: SignOptions = SignOptions()
+    ) throws -> Data {
+        guard digest.count == 32 else {
+            throw SignetError.hardwareError
+        }
+        let key = try fetchKey(alias: handle.alias)
+        guard let der = SecKeyCreateSignature(
+            key,
+            .ecdsaSignatureDigestX962SHA256,
+            digest as CFData,
+            nil
+        ) as Data? else {
+            throw SignetError.hardwareError
+        }
+        switch options.encoding {
+        case .der:
+            return der
+        case .rawRS:
+            guard let raw = Self.derToRawRS(der) else {
+                throw SignetError.hardwareError
+            }
+            return raw
+        }
+    }
+
     /// Reports whether a key exists for the alias without materializing a handle.
     public func exists(alias: String) -> Bool {
         let query: [String: Any] = [
@@ -192,6 +228,46 @@ public struct SecureEnclaveKeyStore: Sendable {
             0x42, 0x00,
         ]
         return Data(header) + raw
+    }
+
+    /// Converts a DER ECDSA signature (`SEQUENCE { INTEGER r, INTEGER s }`) to
+    /// the fixed 64-byte `r || s` form, each a 32-byte big-endian integer.
+    /// Returns nil if the DER is malformed or a component exceeds 32 bytes.
+    static func derToRawRS(_ der: Data) -> Data? {
+        let bytes = [UInt8](der)
+        var i = 0
+        guard bytes.count >= 2, bytes[i] == 0x30, bytes[i + 1] & 0x80 == 0 else { return nil }
+        let seqLen = Int(bytes[i + 1])
+        i += 2
+        guard i + seqLen == bytes.count else { return nil }
+        guard let r = Self.readInteger(bytes, &i), let s = Self.readInteger(bytes, &i) else {
+            return nil
+        }
+        guard i == bytes.count, let r32 = Self.leftPad32(r), let s32 = Self.leftPad32(s) else {
+            return nil
+        }
+        return Data(r32 + s32)
+    }
+
+    /// Reads one DER INTEGER at `i`, advancing `i`, and returns its big-endian
+    /// bytes with the positive-padding `0x00` stripped. Nil if malformed.
+    private static func readInteger(_ bytes: [UInt8], _ i: inout Int) -> [UInt8]? {
+        guard i < bytes.count, bytes[i] == 0x02, i + 1 < bytes.count, bytes[i + 1] & 0x80 == 0 else {
+            return nil
+        }
+        let len = Int(bytes[i + 1])
+        i += 2
+        guard len > 0, i + len <= bytes.count else { return nil }
+        var value = Array(bytes[i..<(i + len)])
+        i += len
+        while value.count > 1 && value[0] == 0x00 { value.removeFirst() }
+        return value
+    }
+
+    /// Left-pads a big-endian integer to 32 bytes. Nil if it exceeds 32.
+    private static func leftPad32(_ value: [UInt8]) -> [UInt8]? {
+        guard value.count <= 32 else { return nil }
+        return Array(repeating: 0, count: 32 - value.count) + value
     }
 
     /// Maps a `SecKeyCreateRandomKey` failure code to the closed error set.

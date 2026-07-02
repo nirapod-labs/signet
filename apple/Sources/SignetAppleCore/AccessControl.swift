@@ -15,7 +15,8 @@ public struct AccessControlPolicy: Sendable, Equatable {
     /// The requested presence check.
     public let authRequirement: AuthRequirement
     /// Auth reuse window. `nil` or `0` means per-use auth; `> 0` means a time
-    /// window. Consumed at sign time, not baked into the key on Apple.
+    /// window. On Apple it is a sign-time value, not baked into the key; the
+    /// current sign path does not apply it.
     public let authValiditySeconds: Int?
     /// Whether a biometric re-enrollment invalidates the key. `true` maps to
     /// `.biometryCurrentSet`, `false` to `.biometryAny`.
