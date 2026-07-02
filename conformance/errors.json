@@ -12,6 +12,7 @@
     "tierMismatchOnExisting",
     "attestationUnsupported",
     "hardwareError",
-    "unsupportedPlatform"
+    "unsupportedPlatform",
+    "invalidArgument"
   ]
 }
