@@ -1,0 +1,30 @@
+{
+  "$schema": "https://nitro.margelo.com/nitro.schema.json",
+  "cxxNamespace": [
+    "signet"
+  ],
+  "ios": {
+    "iosModuleName": "Signet"
+  },
+  "android": {
+    "androidNamespace": [
+      "signet"
+    ],
+    "androidCxxLibName": "Signet"
+  },
+  "autolinking": {
+    "Signet": {
+      "ios": {
+        "language": "swift",
+        "implementationClassName": "HybridSignet"
+      },
+      "android": {
+        "language": "kotlin",
+        "implementationClassName": "HybridSignet"
+      }
+    }
+  },
+  "ignorePaths": [
+    "**/node_modules"
+  ]
+}
