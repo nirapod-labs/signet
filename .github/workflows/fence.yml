@@ -1,0 +1,17 @@
+name: fence
+on:
+  push:
+    paths-ignore: ["docs/**", "**/*.md", "LICENSE", "NOTICE"]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  fence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static non-custodial fence
+        run: |
+          echo "fence: static non-custodial assertions are not yet implemented (see scripts/fence-check.sh)."
+          echo "Will assert: no private-key export symbol in any surface; no key material on any binding boundary."
+          exit 1

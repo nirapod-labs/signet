@@ -1,0 +1,18 @@
+name: ci-apple
+on:
+  push:
+    paths: ["apple/**", "conformance/**", ".github/workflows/ci-apple.yml"]
+  pull_request:
+    paths: ["apple/**", "conformance/**"]
+permissions:
+  contents: read
+jobs:
+  apple-core:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build + test SignetAppleCore
+        run: |
+          echo "ci-apple: SignetAppleCore is not yet implemented."
+          echo "Present and red until apple/ lands (SPM + XCTest, SimEnclave + physical-device lanes)."
+          exit 1
