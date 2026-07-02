@@ -1,0 +1,16 @@
+name: materialize-checksum
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  materialize-checksum:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Dry-run materialize and checksum
+        run: node tools/release/materialize.mjs
