@@ -11,6 +11,9 @@ import android.security.keystore.KeyInfo
 import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import android.security.keystore.StrongBoxUnavailableException
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
 import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
@@ -20,6 +23,11 @@ import java.security.Signature
 import java.security.cert.X509Certificate
 import java.security.interfaces.ECPublicKey
 import java.security.spec.ECGenParameterSpec
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 
 /**
  * Android Keystore-backed P-256 key store.
@@ -32,6 +40,8 @@ import java.security.spec.ECGenParameterSpec
  * weaker key.
  */
 public class AndroidKeyStoreSigner(private val context: Context) {
+    private val signGate = AuthSignGate()
+
     /**
      * Generates a non-exportable P-256 key, gated by the spec's access-control
      * policy. Tries StrongBox first and falls back to the TEE; the report's
@@ -148,6 +158,149 @@ public class AndroidKeyStoreSigner(private val context: Context) {
                 derToRawSignature(der) ?: throw SignetException(SignetErrorCode.hardwareError)
         }
     }
+
+    /**
+     * Signs a 32-byte digest with an auth-gated key, driving a biometric prompt
+     * through [authContext] and suspending until the user responds. Auth-gated
+     * signing is serialized: a second call issued while a prompt is still
+     * outstanding is rejected with `authInProgress`. The digest guard and the
+     * [options] encoding match the silent [sign].
+     *
+     * @throws SignetException `invalidArgument` if the digest is not 32 bytes;
+     *   `authInProgress` if a gated sign is already in progress; `notFound` if no
+     *   key exists; `keyInvalidated` if biometric re-enrollment invalidated the
+     *   key; `userCanceled` if the user dismissed the prompt; `authFailed` if
+     *   authentication failed; `authContextRequired` if the prompt cannot be
+     *   presented; `hardwareError` on any other signing failure.
+     */
+    public suspend fun sign(
+        handle: KeyHandle,
+        digest: ByteArray,
+        authContext: AuthContext,
+        options: SignOptions = SignOptions(),
+    ): ByteArray {
+        requireDigest32(digest)
+        if (!signGate.tryEnter()) throw SignetException(SignetErrorCode.authInProgress)
+        try {
+            val privateKey = loadPrivateKey(handle.alias)
+            val signature = Signature.getInstance(SIGNATURE_ALGORITHM)
+            try {
+                signature.initSign(privateKey)
+            } catch (invalidated: KeyPermanentlyInvalidatedException) {
+                throw SignetException(SignetErrorCode.keyInvalidated, cause = invalidated)
+            } catch (failure: Exception) {
+                throw SignetException(SignetErrorCode.hardwareError, cause = failure)
+            }
+            val authenticated = authenticate(authContext, signature)
+            val der = try {
+                authenticated.update(digest)
+                authenticated.sign()
+            } catch (invalidated: KeyPermanentlyInvalidatedException) {
+                throw SignetException(SignetErrorCode.keyInvalidated, cause = invalidated)
+            } catch (failure: Exception) {
+                throw SignetException(SignetErrorCode.hardwareError, cause = failure)
+            }
+            return when (options.encoding) {
+                SignOptions.Encoding.der -> der
+                SignOptions.Encoding.rawRS ->
+                    derToRawSignature(der) ?: throw SignetException(SignetErrorCode.hardwareError)
+            }
+        } finally {
+            signGate.exit()
+        }
+    }
+
+    /**
+     * Presents the biometric prompt bound to [signature] and suspends until the
+     * user responds, returning the authenticated [Signature]. Runs on the main
+     * thread, as `BiometricPrompt` requires. A dismissed prompt maps to
+     * `userCanceled`, a lockout to `authFailed`, an unpresentable prompt to
+     * `authContextRequired`, and anything else to `hardwareError`.
+     */
+    private suspend fun authenticate(
+        authContext: AuthContext,
+        signature: Signature,
+    ): Signature = withContext(Dispatchers.Main.immediate) {
+        suspendCancellableCoroutine<Signature> { continuation ->
+            val callback = object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    val authenticated = result.cryptoObject?.signature
+                    if (authenticated != null) {
+                        continuation.resume(authenticated)
+                    } else {
+                        continuation.resumeWithException(SignetException(SignetErrorCode.hardwareError))
+                    }
+                }
+
+                override fun onAuthenticationError(code: Int, message: CharSequence) {
+                    continuation.resumeWithException(authError(code))
+                }
+            }
+            val prompt = BiometricPrompt(
+                authContext.activity,
+                ContextCompat.getMainExecutor(authContext.activity),
+                callback,
+            )
+            continuation.invokeOnCancellation { prompt.cancelAuthentication() }
+            try {
+                prompt.authenticate(
+                    buildPromptInfo(authContext),
+                    BiometricPrompt.CryptoObject(signature),
+                )
+            } catch (presentation: IllegalStateException) {
+                // The activity is not in a state that can host the prompt.
+                continuation.resumeWithException(
+                    SignetException(SignetErrorCode.authContextRequired, cause = presentation),
+                )
+            } catch (presentation: IllegalArgumentException) {
+                // The prompt configuration is not presentable on this device.
+                continuation.resumeWithException(
+                    SignetException(SignetErrorCode.authContextRequired, cause = presentation),
+                )
+            } catch (failure: Exception) {
+                continuation.resumeWithException(
+                    SignetException(SignetErrorCode.hardwareError, cause = failure),
+                )
+            }
+        }
+    }
+
+    /**
+     * Builds the prompt. The allowed authenticators follow the key's declared
+     * [AuthContext.authRequirement]: a device-credential-capable key allows the
+     * device credential on API 30+ (where a crypto-bound device credential is
+     * supported) and is biometric-only below that; a biometric-only key shows the
+     * caller's negative button.
+     */
+    private fun buildPromptInfo(authContext: AuthContext): BiometricPrompt.PromptInfo {
+        val builder = BiometricPrompt.PromptInfo.Builder().setTitle(authContext.title)
+        authContext.subtitle?.let { builder.setSubtitle(it) }
+        val allowsDeviceCredential =
+            authContext.authRequirement == AuthRequirement.biometricOrDeviceCredential &&
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+        if (allowsDeviceCredential) {
+            builder.setAllowedAuthenticators(
+                BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                    BiometricManager.Authenticators.DEVICE_CREDENTIAL,
+            )
+        } else {
+            builder.setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+            builder.setNegativeButtonText(authContext.negativeButtonText)
+        }
+        return builder.build()
+    }
+
+    /** Maps a `BiometricPrompt` terminal error code to the closed error set. */
+    private fun authError(code: Int): SignetException = SignetException(
+        when (code) {
+            BiometricPrompt.ERROR_USER_CANCELED,
+            BiometricPrompt.ERROR_NEGATIVE_BUTTON,
+            BiometricPrompt.ERROR_CANCELED -> SignetErrorCode.userCanceled
+            BiometricPrompt.ERROR_LOCKOUT,
+            BiometricPrompt.ERROR_LOCKOUT_PERMANENT -> SignetErrorCode.authFailed
+            else -> SignetErrorCode.hardwareError
+        },
+    )
 
     /**
      * Re-reads the tier of an existing key from its [KeyInfo]. `requested` comes

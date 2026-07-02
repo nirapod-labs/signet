@@ -52,6 +52,13 @@ public enum class SignetErrorCode {
      * conflated with [hardwareError].
      */
     invalidArgument,
+
+    /**
+     * An auth-gated operation was issued while another's biometric prompt was
+     * still outstanding. Auth-gated signing is serialized; the concurrent
+     * request is rejected rather than queued behind or racing the first prompt.
+     */
+    authInProgress,
 }
 
 /**

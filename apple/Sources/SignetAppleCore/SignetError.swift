@@ -33,4 +33,7 @@ public enum SignetError: Error, Equatable, Sendable {
     /// digest that is not exactly 32 bytes. Rejected before any platform call;
     /// never conflated with `hardwareError`.
     case invalidArgument
+    /// An auth-gated operation was issued while another's biometric prompt was
+    /// still outstanding; the concurrent request is rejected, not queued.
+    case authInProgress
 }
