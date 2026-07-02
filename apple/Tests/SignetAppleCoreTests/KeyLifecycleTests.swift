@@ -58,4 +58,21 @@ import Testing
         // A second delete on the now-absent alias must not throw.
         try store.delete(alias: alias)
     }
+
+    @Test func gatedKeyReportsItsAuthClass() throws {
+        guard secureEnclaveReachable() else { return }
+        let alias = "signet.gated.\(UUID().uuidString)"
+        defer { try? store.delete(alias: alias) }
+
+        let policy = AccessControlPolicy(authRequirement: .biometricOrDeviceCredential)
+        do {
+            let (_, report) = try store.generateKey(KeySpec(alias: alias, accessControl: policy))
+            #expect(report.authEnforced == .biometricOrDeviceCredential)
+        } catch let error as SignetError where error == .unavailableTier || error == .hardwareError {
+            // A gated key needs an enrolled biometric or a device passcode to
+            // bind to; where the environment has neither, creation fails with
+            // one of these. Any other error fails the test. The device lane
+            // configures auth and verifies the success path.
+        }
+    }
 }

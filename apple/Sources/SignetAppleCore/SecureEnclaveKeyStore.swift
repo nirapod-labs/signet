@@ -17,10 +17,11 @@ public struct SecureEnclaveKeyStore: Sendable {
 
     public init() {}
 
-    /// Generates a non-exportable P-256 key in the Secure Enclave.
+    /// Generates a non-exportable P-256 key in the Secure Enclave, gated by the
+    /// spec's access-control policy.
     ///
     /// - Returns: the key handle and a tier report read from what was created
-    ///   (`achieved`, `evidence`, `meetsFloor`).
+    ///   (`achieved`, `evidence`, `meetsFloor`, `authEnforced`).
     /// - Throws: `keyAlreadyExists` if the alias is taken; `unavailableTier` if
     ///   the Secure Enclave cannot create the key; `hardwareError` if the
     ///   access-control object cannot be built.
@@ -32,7 +33,7 @@ public struct SecureEnclaveKeyStore: Sendable {
         guard let access = SecAccessControlCreateWithFlags(
             nil,
             kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-            [.privateKeyUsage],
+            Self.accessFlags(for: spec.accessControl),
             nil
         ) else {
             throw SignetError.hardwareError
@@ -65,7 +66,7 @@ public struct SecureEnclaveKeyStore: Sendable {
                 platformStrongest: .secureEnclave
             ),
             evidence: .seTokenPresent,
-            authEnforced: .none,
+            authEnforced: Self.authClass(for: spec.accessControl),
             invalidated: false
         )
         return (KeyHandle(alias: spec.alias), report)
@@ -97,6 +98,38 @@ public struct SecureEnclaveKeyStore: Sendable {
         let status = SecItemDelete(query as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw SignetError.hardwareError
+        }
+    }
+
+    /// The `SecAccessControlCreateFlags` for a policy. `.privateKeyUsage` is
+    /// required for a Secure Enclave key. `invalidateOnBiometricEnrollment`
+    /// selects `.biometryCurrentSet` (invalidated on re-enrollment) over
+    /// `.biometryAny`.
+    static func accessFlags(for policy: AccessControlPolicy) -> SecAccessControlCreateFlags {
+        let biometric: SecAccessControlCreateFlags =
+            policy.invalidateOnBiometricEnrollment ? .biometryCurrentSet : .biometryAny
+        switch policy.authRequirement {
+        case .none:
+            return .privateKeyUsage
+        case .biometricOnly:
+            return [.privateKeyUsage, biometric]
+        case .biometricOrDeviceCredential:
+            return [.privateKeyUsage, biometric, .or, .devicePasscode]
+        }
+    }
+
+    /// The `AuthClass` a policy produces on Apple. Apple exposes no read-back of
+    /// a created `SecAccessControl`; creation is all-or-nothing (the key is
+    /// returned only if built with these flags, never a silent downgrade). The
+    /// reported class is the class the key was created with.
+    static func authClass(for policy: AccessControlPolicy) -> AuthClass {
+        switch policy.authRequirement {
+        case .none:
+            return .none
+        case .biometricOnly:
+            return .biometricOnly
+        case .biometricOrDeviceCredential:
+            return .biometricOrDeviceCredential
         }
     }
 
