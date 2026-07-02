@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "SecurityTierReport": {
+    "achieved": "SecurityLevel",
+    "requested": "SecurityLevel",
+    "meetsFloor": "bool",
+    "evidence": "TierEvidence",
+    "authEnforced": "AuthClass",
+    "invalidated": "bool",
+    "schemaVersion": "int"
+  },
+  "AuthClass": {
+    "values": ["none", "biometricOnly", "biometricOrDeviceCredential", "deviceCredentialOnly"],
+    "note": "Derived from the CREATED access-control / KeyInfo, never echoed from the request."
+  },
+  "AttestationResult": {
+    "format": ["androidKeyChain", "none"],
+    "chain": "bytes[]",
+    "schemaVersion": "int"
+  },
+  "KeySpec": {
+    "alias": "string",
+    "requiredMinTier": "SecurityLevel (default: platformStrongest)",
+    "allowDowngrade": "bool (default false)",
+    "accessControl": "AccessControlPolicy",
+    "attestationChallenge": "bytes? (bound at generation; there is no call-time challenge)"
+  },
+  "AccessControlPolicy": {
+    "authRequirement": ["none", "biometricOnly", "biometricOrDeviceCredential"],
+    "authValiditySeconds": "int? (null or 0 = per-use auth; > 0 = time window)",
+    "invalidateOnBiometricEnrollment": "bool (default true)"
+  },
+  "SignOptions": {
+    "encoding": ["der", "raw-r-s"],
+    "encodingDefault": "der",
+    "normalizeLowS": "bool (default false)"
+  },
+  "PublicKey": {
+    "format": ["rawX962", "spki"],
+    "bytes": "bytes"
+  },
+  "primitives": {
+    "generateKey": "(KeySpec) -> (KeyHandle, SecurityTierReport). FAILS unavailableTier below floor unless allowDowngrade:true; existing alias FAILS keyAlreadyExists.",
+    "sign": "(KeyHandle, digest[32], SignOptions?) -> Signature. Async; host-UI biometric callback; a second concurrent auth-gated sign is rejected.",
+    "getPublicKey": "(KeyHandle) -> PublicKey",
+    "getAttestation": "(KeyHandle) -> AttestationResult. No call-time challenge (bound at generateKey).",
+    "getSecurityTier": "(KeyHandle) -> SecurityTierReport. On an invalidated key returns invalidated==true (no throw).",
+    "exists": "(alias) -> bool",
+    "delete": "(alias) -> void. Idempotent."
+  }
+}
