@@ -7,13 +7,16 @@ version: 1
 behaviors:
   - id: tier.readBackNotRequest
     status: pending
-    assert: getSecurityTier reports the achieved tier, never the requested one.
-  - id: tier.belowFloorFails
+    assert: getSecurityTier reports the achieved tier, never an assumed or requested one.
+  - id: tier.policyFloorFails
     status: pending
-    assert: generateKey below requiredMinTier fails with unavailableTier unless allowDowngrade.
-  - id: tier.noSilentDowngrade
+    assert: tierPolicy strongest fails unavailableTier when no hardware is available; atLeast(class) fails unavailableTier below the class; software is never returned by either.
+  - id: tier.bestEffortSoftwareFlagged
     status: pending
-    assert: a StrongBox request that falls to TEE reports tee, not strongBox.
+    assert: tierPolicy bestEffort never fails on tier and may return software, always with meetsFloor=false and evidence=selfReportUnverified; achieved is honest, never inflated.
+  - id: tier.meetsFloorHonest
+    status: pending
+    assert: a successful strongest or atLeast return has meetsFloor=true; meetsFloor=false appears only on a bestEffort below-class result.
   - id: provenance.appleNeverAttested
     status: pending
     assert: Apple SE reports evidence=seTokenPresent, never attested.
