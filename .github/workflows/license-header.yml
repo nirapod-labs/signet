@@ -1,0 +1,34 @@
+name: license-header
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apple/**"
+      - "android/**"
+      - "windows/**"
+      - "kmp/**"
+      - "react-native/**"
+      - "flutter/**"
+      - "conformance/**"
+      - "scripts/check-license-headers.sh"
+      - ".github/workflows/license-header.yml"
+  pull_request:
+    paths:
+      - "apple/**"
+      - "android/**"
+      - "windows/**"
+      - "kmp/**"
+      - "react-native/**"
+      - "flutter/**"
+      - "conformance/**"
+      - "scripts/check-license-headers.sh"
+      - ".github/workflows/license-header.yml"
+permissions:
+  contents: read
+jobs:
+  license-header:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check SPDX headers on first-party source
+        run: bash scripts/check-license-headers.sh

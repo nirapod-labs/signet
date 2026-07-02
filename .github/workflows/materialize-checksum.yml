@@ -1,0 +1,37 @@
+name: materialize-checksum
+on:
+  push:
+    branches: [main]
+    paths:
+      - "VERSION"
+      - "sdk-versions.json"
+      - "package.json"
+      - "react-native/react-native-signet/package.json"
+      - "conformance/package.json"
+      - "flutter/signet/pubspec.yaml"
+      - "kmp/signet/build.gradle.kts"
+      - "tools/release/**"
+      - ".github/workflows/materialize-checksum.yml"
+  pull_request:
+    paths:
+      - "VERSION"
+      - "sdk-versions.json"
+      - "package.json"
+      - "react-native/react-native-signet/package.json"
+      - "conformance/package.json"
+      - "flutter/signet/pubspec.yaml"
+      - "kmp/signet/build.gradle.kts"
+      - "tools/release/**"
+      - ".github/workflows/materialize-checksum.yml"
+permissions:
+  contents: read
+jobs:
+  materialize-checksum:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Dry-run materialize and checksum
+        run: node tools/release/materialize.mjs

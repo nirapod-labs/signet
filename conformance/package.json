@@ -1,0 +1,11 @@
+{
+  "name": "@signet/conformance",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Signet cross-language conformance contract and polyglot harness.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "conformance": "node harness/driver.mjs"
+  }
+}

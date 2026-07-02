@@ -1,0 +1,28 @@
+name: android-core
+on:
+  push:
+    branches: [main]
+    paths:
+      - "android/**"
+      - ".github/workflows/ci-android.yml"
+  pull_request:
+    paths:
+      - "android/**"
+      - ".github/workflows/ci-android.yml"
+permissions:
+  contents: read
+jobs:
+  android-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Build and unit-test the Android core
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest

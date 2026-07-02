@@ -1,0 +1,34 @@
+name: fence
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apple/**"
+      - "android/**"
+      - "windows/**"
+      - "kmp/**"
+      - "react-native/**"
+      - "flutter/**"
+      - "conformance/**"
+      - "scripts/fence-check.sh"
+      - ".github/workflows/fence.yml"
+  pull_request:
+    paths:
+      - "apple/**"
+      - "android/**"
+      - "windows/**"
+      - "kmp/**"
+      - "react-native/**"
+      - "flutter/**"
+      - "conformance/**"
+      - "scripts/fence-check.sh"
+      - ".github/workflows/fence.yml"
+permissions:
+  contents: read
+jobs:
+  fence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static non-custodial fence
+        run: bash scripts/fence-check.sh

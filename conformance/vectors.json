@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "comment": "Golden test vectors shared across all four language runners: P-256 signature vectors, a real StrongBox attestation fixture, and SPKI public-key bytes. Populated as the cores and bindings land.",
+  "signatureVectors": [],
+  "attestationFixtures": [],
+  "publicKeyVectors": []
+}

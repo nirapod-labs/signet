@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Nirapod Labs
+
+# Only the JavaScript surfaces are pnpm workspaces. The Swift (apple/), Kotlin
+# (android/, kmp/), Dart (flutter/), and C++ (windows/) trees are built by their
+# own ecosystem tools, driven from the Makefile.
+packages:
+  - "react-native/react-native-signet"
+  - "conformance"
+  - "examples/*"
+  # SignetApp is a self-contained Expo desktop app with its own lockfile; kept out
+  # of the core workspace so its native dependency tree does not enter the core lockfile.
+  - "!react-native/SignetApp"
