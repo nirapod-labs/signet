@@ -1,0 +1,25 @@
+name: rn-lib
+on:
+  push:
+    paths:
+      - "react-native/react-native-signet/**"
+      - "apple/**"
+      - "android/**"
+      - ".github/workflows/ci-rn-lib.yml"
+  pull_request:
+    paths:
+      - "react-native/react-native-signet/**"
+      - "apple/**"
+      - "android/**"
+      - ".github/workflows/ci-rn-lib.yml"
+permissions:
+  contents: read
+jobs:
+  rn-lib:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Typecheck and codegen the RN binding
+        run: |
+          echo "react-native binding codegen is not yet wired"
+          exit 1
