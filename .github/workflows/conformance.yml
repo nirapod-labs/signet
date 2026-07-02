@@ -1,0 +1,26 @@
+name: conformance
+on:
+  push:
+    branches: [main]
+    paths:
+      - "conformance/**"
+      - ".github/workflows/conformance.yml"
+  pull_request:
+    paths:
+      - "conformance/**"
+      - ".github/workflows/conformance.yml"
+permissions:
+  contents: read
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Cross-language conformance suite
+        # Expectation-driven: pending behaviors must report "unimplemented" on
+        # every available runner (missing toolchains tolerated while pending);
+        # a behavior becomes a hard requirement once marked verified.
+        run: node conformance/harness/driver.mjs

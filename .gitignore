@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Nirapod Labs
+
+.DS_Store
+
+# Node / pnpm
+node_modules/
+.turbo/
+
+# Swift / Xcode
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+
+# Android / Kotlin / Gradle
+.gradle/
+local.properties
+android/build/
+kmp/build/
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+flutter/build/
+**/Pods/
+
+# React Native (nitrogen/generated/ IS committed; build output is not)
+react-native/lib/
+
+# CMake / Windows
+windows/build/
+build-*/
+_deps/
+compile_commands.json
+
+# Distribution / local
+dist/
+.env
+*.local
+*.log

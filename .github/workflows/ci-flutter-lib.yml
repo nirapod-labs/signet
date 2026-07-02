@@ -1,0 +1,27 @@
+name: flutter-lib
+on:
+  push:
+    branches: [main]
+    paths:
+      - "flutter/signet/**"
+      - ".github/workflows/ci-flutter-lib.yml"
+  pull_request:
+    paths:
+      - "flutter/signet/**"
+      - ".github/workflows/ci-flutter-lib.yml"
+permissions:
+  contents: read
+jobs:
+  flutter-lib:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Analyze and test the Flutter plugin
+        run: |
+          cd flutter/signet
+          flutter pub get
+          flutter analyze
+          flutter test

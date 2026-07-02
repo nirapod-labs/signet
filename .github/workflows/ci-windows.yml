@@ -1,0 +1,24 @@
+name: windows-core
+on:
+  push:
+    branches: [main]
+    paths:
+      - "windows/**"
+      - ".github/workflows/ci-windows.yml"
+  pull_request:
+    paths:
+      - "windows/**"
+      - ".github/workflows/ci-windows.yml"
+permissions:
+  contents: read
+jobs:
+  windows-core:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure, build, and test SignetWindowsCore
+        shell: bash
+        run: |
+          cmake -S windows -B windows/build
+          cmake --build windows/build --config Debug
+          ctest --test-dir windows/build -C Debug --output-on-failure

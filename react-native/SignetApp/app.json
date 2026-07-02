@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "SignetApp",
+    "slug": "SignetApp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "xyz.nirapod.signet.example"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "xyz.nirapod.signet.example"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "platforms": [
+      "android",
+      "ios",
+      "macos",
+      "windows"
+    ],
+    "macos": {
+      "bundleIdentifier": "xyz.nirapod.signet.example"
+    },
+    "plugins": [
+      [
+        "expo-desktop-config-plugins",
+        {
+          "displayName": "Signet App",
+          "bundleIdentifier": "xyz.nirapod.signet.example"
+        }
+      ]
+    ]
+  }
+}

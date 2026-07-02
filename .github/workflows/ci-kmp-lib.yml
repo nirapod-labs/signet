@@ -1,0 +1,28 @@
+name: kmp-lib
+on:
+  push:
+    branches: [main]
+    paths:
+      - "kmp/signet/**"
+      - ".github/workflows/ci-kmp-lib.yml"
+  pull_request:
+    paths:
+      - "kmp/signet/**"
+      - ".github/workflows/ci-kmp-lib.yml"
+permissions:
+  contents: read
+jobs:
+  kmp-lib:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Build and test the common and JVM targets
+        run: |
+          cd kmp/signet
+          chmod +x gradlew
+          ./gradlew jvmTest

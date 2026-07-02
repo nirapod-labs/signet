@@ -1,0 +1,13 @@
+# Kotlin static analysis for the Android core and the KMP binding.
+build:
+  maxIssues: 0
+
+style:
+  MaxLineLength:
+    maxLineLength: 120
+  ForbiddenComment:
+    active: false
+
+complexity:
+  LongMethod:
+    threshold: 60

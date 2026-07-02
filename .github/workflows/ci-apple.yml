@@ -1,0 +1,23 @@
+name: apple-core
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apple/**"
+      - ".github/workflows/ci-apple.yml"
+  pull_request:
+    paths:
+      - "apple/**"
+      - ".github/workflows/ci-apple.yml"
+permissions:
+  contents: read
+jobs:
+  apple-core:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test SignetAppleCore
+        run: |
+          cd apple
+          swift build
+          swift test
