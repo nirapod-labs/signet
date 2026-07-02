@@ -3,14 +3,10 @@ on:
   push:
     paths:
       - "kmp/signet/**"
-      - "apple/**"
-      - "android/**"
       - ".github/workflows/ci-kmp-lib.yml"
   pull_request:
     paths:
       - "kmp/signet/**"
-      - "apple/**"
-      - "android/**"
       - ".github/workflows/ci-kmp-lib.yml"
 permissions:
   contents: read
@@ -19,7 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build the KMP binding
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Build and test the common and JVM targets
         run: |
-          echo "kotlin multiplatform build is not yet wired"
-          exit 1
+          cd kmp/signet
+          chmod +x gradlew
+          ./gradlew jvmTest
