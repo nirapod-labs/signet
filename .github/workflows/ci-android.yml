@@ -15,7 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build the Android core
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Build and unit-test the Android core
         run: |
-          echo "android core build is not yet wired"
-          exit 1
+          cd android
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest
