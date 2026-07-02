@@ -49,3 +49,31 @@ import Testing
     #expect(SecureEnclaveKeyStore.mapCreationFailure(code: Int(errSecParam)) == .unavailableTier)
     #expect(SecureEnclaveKeyStore.mapCreationFailure(code: 0) == .unavailableTier)
 }
+
+@Test func accessFlagsMapEachPolicy() {
+    let bioOnly = AccessControlPolicy(authRequirement: .biometricOnly)
+    let bioOnlyAny = AccessControlPolicy(
+        authRequirement: .biometricOnly,
+        invalidateOnBiometricEnrollment: false
+    )
+    let bioOrPasscode = AccessControlPolicy(authRequirement: .biometricOrDeviceCredential)
+    // No presence check: private-key usage only.
+    #expect(SecureEnclaveKeyStore.accessFlags(for: .none) == .privateKeyUsage)
+    // Biometric only, default: the currently-enrolled set (dies on re-enrollment).
+    #expect(SecureEnclaveKeyStore.accessFlags(for: bioOnly) == [.privateKeyUsage, .biometryCurrentSet])
+    // Biometric only, surviving re-enrollment: any enrolled biometry.
+    #expect(SecureEnclaveKeyStore.accessFlags(for: bioOnlyAny) == [.privateKeyUsage, .biometryAny])
+    // Biometric or passcode: biometry OR the device passcode.
+    #expect(
+        SecureEnclaveKeyStore.accessFlags(for: bioOrPasscode)
+            == [.privateKeyUsage, .biometryCurrentSet, .or, .devicePasscode]
+    )
+}
+
+@Test func authClassTracksTheRequirement() {
+    let bio = AccessControlPolicy(authRequirement: .biometricOnly)
+    let bioOrPasscode = AccessControlPolicy(authRequirement: .biometricOrDeviceCredential)
+    #expect(SecureEnclaveKeyStore.authClass(for: .none) == .none)
+    #expect(SecureEnclaveKeyStore.authClass(for: bio) == .biometricOnly)
+    #expect(SecureEnclaveKeyStore.authClass(for: bioOrPasscode) == .biometricOrDeviceCredential)
+}
