@@ -78,21 +78,28 @@ extension SecurityLevel {
 /// One report shape everywhere. `achieved` is read back from the created key,
 /// `meetsFloor` derives from the tier partial order, and `authEnforced` is
 /// derived from the created access control.
+///
+/// `requested` and `authEnforced` are optional. `generateKey` populates both. A
+/// `getSecurityTier` re-read leaves `requested` nil (the policy is not stored
+/// with the key) and leaves `authEnforced` nil where the platform cannot read
+/// the created access control back (Apple has no such read-back). A nil
+/// `authEnforced` means unobservable, which is distinct from `AuthClass.none`
+/// (a key created with no presence check).
 public struct SecurityTierReport: Sendable, Equatable {
     public let achieved: SecurityLevel
-    public let requested: TierPolicy
+    public let requested: TierPolicy?
     public let meetsFloor: Bool
     public let evidence: TierEvidence
-    public let authEnforced: AuthClass
+    public let authEnforced: AuthClass?
     public let invalidated: Bool
     public let schemaVersion: Int
 
     public init(
         achieved: SecurityLevel,
-        requested: TierPolicy,
+        requested: TierPolicy?,
         meetsFloor: Bool,
         evidence: TierEvidence,
-        authEnforced: AuthClass,
+        authEnforced: AuthClass?,
         invalidated: Bool,
         schemaVersion: Int = 1
     ) {

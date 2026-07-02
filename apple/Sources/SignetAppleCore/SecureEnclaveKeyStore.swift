@@ -131,6 +131,39 @@ public struct SecureEnclaveKeyStore: Sendable {
         }
     }
 
+    /// Re-reads the tier of an existing key. Does not throw on an invalidated
+    /// key. `requested` and `authEnforced` come back nil (unreadable on Apple);
+    /// `invalidated` is `false` here, and `keyInvalidated` on `sign` is
+    /// authoritative. `meetsFloor` is true against every policy (the Secure
+    /// Enclave is Apple's strongest tier).
+    ///
+    /// - Throws: `notFound` if no key exists for the alias.
+    public func getSecurityTier(_ handle: KeyHandle) throws -> SecurityTierReport {
+        guard exists(alias: handle.alias) else {
+            throw SignetError.notFound
+        }
+        return SecurityTierReport(
+            achieved: .secureEnclave,
+            requested: nil,
+            meetsFloor: true,
+            evidence: .seTokenPresent,
+            authEnforced: nil,
+            invalidated: false
+        )
+    }
+
+    /// Returns the attestation for a key. The Secure Enclave has no per-key
+    /// hardware attestation; this is always `format = none` with an empty
+    /// chain, for any live-or-invalidated key.
+    ///
+    /// - Throws: `notFound` if no key exists for the alias.
+    public func getAttestation(_ handle: KeyHandle) throws -> AttestationResult {
+        guard exists(alias: handle.alias) else {
+            throw SignetError.notFound
+        }
+        return AttestationResult(format: .none)
+    }
+
     /// Reports whether a key exists for the alias without materializing a handle.
     public func exists(alias: String) -> Bool {
         let query: [String: Any] = [
