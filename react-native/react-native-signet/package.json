@@ -1,0 +1,87 @@
+{
+  "name": "react-native-signet",
+  "version": "0.1.0-dev",
+  "description": "Hardware-backed P-256 signing keys via Secure Enclave, StrongBox/TEE, and TPM.",
+  "main": "./lib/commonjs/index.js",
+  "module": "./lib/module/index.js",
+  "types": "./lib/typescript/src/index.d.ts",
+  "react-native": "src/index",
+  "source": "src/index",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "clean": "git clean -dfX",
+    "build": "npm run typecheck && bob build",
+    "codegen": "nitrogen --logLevel=\"debug\" && npm run build && node post-script.js"
+  },
+  "keywords": [
+    "react-native",
+    "react-native-signet",
+    "nitro",
+    "secure-enclave",
+    "strongbox",
+    "tpm"
+  ],
+  "files": [
+    "src",
+    "react-native.config.js",
+    "lib",
+    "nitrogen",
+    "cpp",
+    "nitro.json",
+    "android/build.gradle",
+    "android/fix-prefab.gradle",
+    "android/gradle.properties",
+    "android/CMakeLists.txt",
+    "android/src",
+    "ios/**/*.h",
+    "ios/**/*.m",
+    "ios/**/*.mm",
+    "ios/**/*.cpp",
+    "ios/**/*.swift",
+    "app.plugin.js",
+    "*.podspec",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nirapod-labs/signet.git",
+    "directory": "react-native/react-native-signet"
+  },
+  "author": "athexweb3",
+  "license": "Apache-2.0",
+  "bugs": "https://github.com/nirapod-labs/signet/issues",
+  "homepage": "https://github.com/nirapod-labs/signet#readme",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/react": "19.2.0",
+    "nitrogen": "0.36.1",
+    "react": "19.2.3",
+    "react-native": "0.84.1",
+    "react-native-builder-bob": "^0.40.18",
+    "react-native-nitro-modules": "0.36.1",
+    "typescript": "^5.8.3"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*",
+    "react-native-nitro-modules": "*"
+  },
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      "commonjs",
+      "module",
+      [
+        "typescript",
+        {
+          "project": "tsconfig.json"
+        }
+      ]
+    ]
+  }
+}
