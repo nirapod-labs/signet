@@ -22,5 +22,5 @@ jobs:
       - name: Typecheck the React Native example app
         run: |
           cd react-native/SignetApp
-          pnpm install --frozen-lockfile
+          pnpm install --no-frozen-lockfile --ignore-workspace
           pnpm exec tsc --noEmit
