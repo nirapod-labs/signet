@@ -10,7 +10,7 @@ SHELL := /bin/bash
 .PHONY: help bootstrap lint format conformance \
         build build-apple build-android build-windows \
         build-flutter build-rn build-kmp \
-        test test-apple test-android clean
+        test test-apple test-android test-windows clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -28,7 +28,7 @@ format: ## Format the JS/TS/JSON surface (Biome)
 	pnpm exec biome format --write .
 
 conformance: ## Run the cross-language conformance suite
-	@echo "conformance: not yet implemented"; exit 1
+	node conformance/harness/driver.mjs
 
 build: build-apple build-android ## Build the v1 native cores
 
@@ -38,17 +38,17 @@ build-apple: ## Build the Apple core (SPM)
 build-android: ## Build the Android core (Gradle)
 	cd android && ./gradlew assemble
 
-build-windows: ## Build the Windows core (CMake) — later phase
+build-windows: ## Build the Windows core (CMake), later phase
 	cmake -S windows -B windows/build && cmake --build windows/build
 
-build-flutter: ## Fetch + analyze the Flutter binding
-	cd flutter && flutter pub get && flutter analyze
+build-flutter: ## Fetch and analyze the Flutter plugin
+	cd flutter/signet && flutter pub get && flutter analyze
 
-build-rn: ## Install + run Nitrogen codegen for the RN binding
-	cd react-native && pnpm install && pnpm exec nitrogen
+build-rn: ## Install and run Nitrogen codegen for the RN binding
+	cd react-native/react-native-signet && pnpm install && pnpm run codegen
 
 build-kmp: ## Build the KMP binding
-	cd kmp && ./gradlew build
+	cd kmp/signet && ./gradlew build
 
 test-apple: ## Test the Apple core
 	cd apple && swift test
@@ -56,5 +56,11 @@ test-apple: ## Test the Apple core
 test-android: ## Test the Android core
 	cd android && ./gradlew test
 
+test-windows: ## Test the Windows core (CTest)
+	ctest --test-dir windows/build --output-on-failure
+
+test: test-apple test-android conformance ## Run core tests and the conformance suite
+
 clean: ## Remove build artifacts
-	rm -rf apple/.build android/build windows/build flutter/build react-native/lib
+	rm -rf apple/.build android/build windows/build flutter/signet/build \
+		react-native/react-native-signet/lib kmp/signet/build
