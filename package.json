@@ -1,0 +1,28 @@
+{
+  "name": "signet",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Hardware-backed P-256 signing keys for Flutter, React Native, and Kotlin Multiplatform — Secure Enclave, StrongBox/TEE, and TPM, with attestation and a normalized security-tier report.",
+  "author": "athexweb3",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/nirapod-labs/signet",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nirapod-labs/signet.git"
+  },
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "ci:lint": "biome ci ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@commitlint/cli": "^19.5.0",
+    "@commitlint/config-conventional": "^19.5.0",
+    "lefthook": "^1.7.18"
+  }
+}

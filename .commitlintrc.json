@@ -1,0 +1,28 @@
+{
+  "extends": ["@commitlint/config-conventional"],
+  "rules": {
+    "type-enum": [2, "always", ["feat", "fix", "docs", "refactor", "test", "build", "ci", "chore"]],
+    "scope-enum": [
+      2,
+      "always",
+      [
+        "apple",
+        "android",
+        "windows",
+        "react-native",
+        "flutter",
+        "kmp",
+        "conformance",
+        "core",
+        "api",
+        "attestation",
+        "ci",
+        "repo",
+        "docs",
+        "release",
+        "examples"
+      ]
+    ],
+    "subject-max-length": [2, "always", 50]
+  }
+}

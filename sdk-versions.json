@@ -1,0 +1,11 @@
+{
+  "comment": "Joint version manifest across every published Signet package. Pre-1.0 and unpublished. The first public version is 1.0.0 on every registry, cut from one tag after a security audit. No 0.x is ever published.",
+  "version": "0.1.0-dev",
+  "packages": {
+    "swiftPackageIndex": { "name": "signet", "version": "0.1.0-dev" },
+    "mavenAndroidCore": { "name": "com.nirapod:signet-android-core", "version": "0.1.0-dev" },
+    "mavenKmp": { "name": "com.nirapod:signet", "version": "0.1.0-dev" },
+    "npm": { "name": "react-native-signet", "version": "0.1.0-dev" },
+    "pubDev": { "name": "signet", "version": "0.1.0-dev" }
+  }
+}
