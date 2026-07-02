@@ -1,0 +1,36 @@
+# Cross-language behaviors asserted identically across Dart, TypeScript, Kotlin,
+# and Swift. A behavior unimplemented in ANY runner is a hard failure (no skips).
+# This is the initial skeleton; each item is implemented and flipped to `verified`
+# as the cores and bindings land.
+version: 1
+behaviors:
+  - id: tier.readBackNotRequest
+    status: pending
+    assert: getSecurityTier reports the achieved tier, never the requested one.
+  - id: tier.belowFloorFails
+    status: pending
+    assert: generateKey below requiredMinTier fails with unavailableTier unless allowDowngrade.
+  - id: tier.noSilentDowngrade
+    status: pending
+    assert: a StrongBox request that falls to TEE reports tee, not strongBox.
+  - id: provenance.appleNeverAttested
+    status: pending
+    assert: Apple SE reports evidence=seTokenPresent, never attested.
+  - id: key.noPrivateExport
+    status: pending
+    assert: no surface, generated or hand-written, exposes a private-key export path.
+  - id: key.existingAliasFails
+    status: pending
+    assert: generateKey on an existing alias fails with keyAlreadyExists.
+  - id: attestation.generationBoundChallenge
+    status: pending
+    assert: getAttestation reflects the generation-time challenge; there is no call-time challenge.
+  - id: error.oneClosedSet
+    status: pending
+    assert: every binding raises exactly the names in errors.json (spelling userCanceled).
+  - id: sign.encodingParity
+    status: pending
+    assert: SignOptions encoding and normalizeLowS behave identically across bindings.
+  - id: auth.concurrentSignRejected
+    status: pending
+    assert: a second concurrent auth-gated sign is rejected with an error.

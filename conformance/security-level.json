@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "securityLevel": {
+    "values": ["secureEnclave", "strongBox", "tee", "tpm", "software"],
+    "description": "The hardware backing a signing key. Always reported as the ACHIEVED level, read back from the created key, never assumed from the request."
+  },
+  "tierEvidence": {
+    "values": ["attested", "keyInfoReadback", "seTokenPresent", "inferred", "selfReportUnverified"],
+    "description": "How the achieved SecurityLevel was determined. A hardware level with evidence != 'attested' is an on-device self-report, not proof."
+  },
+  "partialOrder": {
+    "description": "meetsFloor derives from a partial order over tier CLASSES, not a global ordinal. tpm is NOT weaker than tee.",
+    "classes": {
+      "discreteSecure": ["secureEnclave", "strongBox", "tpm"],
+      "trustedEnvironment": ["tee"],
+      "software": ["software"]
+    },
+    "order": ["discreteSecure", "trustedEnvironment", "software"],
+    "defaultFloor": "platformStrongest"
+  }
+}
