@@ -1,6 +1,7 @@
 name: android-core
 on:
   push:
+    branches: [main]
     paths:
       - "android/**"
       - ".github/workflows/ci-android.yml"

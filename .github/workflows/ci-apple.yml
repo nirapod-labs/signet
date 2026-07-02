@@ -1,6 +1,7 @@
 name: apple-core
 on:
   push:
+    branches: [main]
     paths:
       - "apple/**"
       - ".github/workflows/ci-apple.yml"

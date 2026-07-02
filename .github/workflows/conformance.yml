@@ -1,6 +1,7 @@
 name: conformance
 on:
   push:
+    branches: [main]
     paths:
       - "conformance/**"
       - ".github/workflows/conformance.yml"

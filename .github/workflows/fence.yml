@@ -1,6 +1,7 @@
 name: fence
 on:
   push:
+    branches: [main]
     paths:
       - "apple/**"
       - "android/**"

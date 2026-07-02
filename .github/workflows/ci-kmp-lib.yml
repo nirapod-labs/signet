@@ -1,6 +1,7 @@
 name: kmp-lib
 on:
   push:
+    branches: [main]
     paths:
       - "kmp/signet/**"
       - ".github/workflows/ci-kmp-lib.yml"

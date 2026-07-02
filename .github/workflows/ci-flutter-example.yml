@@ -1,6 +1,7 @@
 name: flutter-example
 on:
   push:
+    branches: [main]
     paths:
       - "flutter/SignetApp/**"
       - "flutter/signet/**"

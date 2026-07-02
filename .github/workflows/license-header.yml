@@ -1,6 +1,7 @@
 name: license-header
 on:
   push:
+    branches: [main]
     paths:
       - "apple/**"
       - "android/**"
