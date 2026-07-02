@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyInfo
+import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import android.security.keystore.StrongBoxUnavailableException
 import java.math.BigInteger
@@ -15,6 +16,8 @@ import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.PrivateKey
+import java.security.Signature
+import java.security.cert.X509Certificate
 import java.security.interfaces.ECPublicKey
 import java.security.spec.ECGenParameterSpec
 
@@ -109,6 +112,96 @@ public class AndroidKeyStoreSigner(private val context: Context) {
                 PublicKey(format, encodeRawX962(publicKey.w.affineX, publicKey.w.affineY))
             PublicKey.Format.spki ->
                 PublicKey(format, publicKey.encoded)
+        }
+    }
+
+    /**
+     * Signs a 32-byte digest and encodes it per [options]. A wrong-length digest
+     * is rejected with `invalidArgument` before any key access. This is the
+     * silent path: it presents no authentication prompt. A key whose presence
+     * check is not currently satisfied surfaces as `hardwareError`.
+     *
+     * @throws SignetException `invalidArgument` if the digest is not 32 bytes;
+     *   `notFound` if no key exists; `keyInvalidated` if biometric re-enrollment
+     *   invalidated the key; `hardwareError` on any other signing failure.
+     */
+    public fun sign(
+        handle: KeyHandle,
+        digest: ByteArray,
+        options: SignOptions = SignOptions(),
+    ): ByteArray {
+        requireDigest32(digest)
+        val privateKey = loadPrivateKey(handle.alias)
+        val der = try {
+            val signature = Signature.getInstance(SIGNATURE_ALGORITHM)
+            signature.initSign(privateKey)
+            signature.update(digest)
+            signature.sign()
+        } catch (invalidated: KeyPermanentlyInvalidatedException) {
+            throw SignetException(SignetErrorCode.keyInvalidated, cause = invalidated)
+        } catch (failure: Exception) {
+            throw SignetException(SignetErrorCode.hardwareError, cause = failure)
+        }
+        return when (options.encoding) {
+            SignOptions.Encoding.der -> der
+            SignOptions.Encoding.rawRS ->
+                derToRawSignature(der) ?: throw SignetException(SignetErrorCode.hardwareError)
+        }
+    }
+
+    /**
+     * Re-reads the tier of an existing key from its [KeyInfo]. `requested` comes
+     * back null: the policy is not stored with the key. Unlike Apple, Android can
+     * read the created key's auth requirement back from [KeyInfo], and
+     * `authEnforced` is populated here rather than null. `invalidated` is
+     * best-effort false; the authoritative invalidation signal is `keyInvalidated`
+     * on `sign`. `meetsFloor` reports whether the key is in hardware at all, with
+     * no stored policy to check against.
+     *
+     * @throws SignetException `notFound` if no key exists for the alias.
+     */
+    public fun getSecurityTier(handle: KeyHandle): SecurityTierReport {
+        val privateKey = loadPrivateKey(handle.alias)
+        val keyInfo = keyInfoOf(privateKey)
+        val achieved = securityLevelReRead(keyInfo)
+        return SecurityTierReport(
+            achieved = achieved,
+            requested = null,
+            meetsFloor = achieved.hardwareClass != null,
+            evidence = if (achieved == SecurityLevel.software) {
+                TierEvidence.selfReportUnverified
+            } else {
+                TierEvidence.keyInfoReadback
+            },
+            authEnforced = authClass(keyInfo),
+            invalidated = false,
+        )
+    }
+
+    /**
+     * Returns the attestation bound to a key at generation. A key created with an
+     * attestation challenge carries a hardware key-attestation chain
+     * (`androidKeyChain`); a key created without one returns `none` with an empty
+     * chain. There is no call-time challenge. The chain is returned as produced
+     * and is never verified here.
+     *
+     * @throws SignetException `notFound` if no key exists for the alias.
+     */
+    public fun getAttestation(handle: KeyHandle): AttestationResult {
+        val store = keyStore()
+        val entryAlias = keystoreAlias(handle.alias)
+        if (!store.containsAlias(entryAlias)) throw SignetException(SignetErrorCode.notFound)
+        val chain = store.getCertificateChain(entryAlias)
+        if (chain == null || chain.isEmpty()) {
+            return AttestationResult(AttestationResult.Format.none)
+        }
+        val leaf = chain[0] as? X509Certificate
+            ?: return AttestationResult(AttestationResult.Format.none)
+        val attested = leaf.getExtensionValue(KEY_ATTESTATION_OID) != null
+        return if (attested) {
+            AttestationResult(AttestationResult.Format.androidKeyChain, chain.map { it.encoded })
+        } else {
+            AttestationResult(AttestationResult.Format.none)
         }
     }
 
@@ -211,6 +304,22 @@ public class AndroidKeyStoreSigner(private val context: Context) {
     }
 
     /**
+     * The achieved tier read back from an existing key, with no creation-time
+     * StrongBox signal. On API 31+ the Keystore reports the level directly; below
+     * that, `isInsideSecureHardware` distinguishes the TEE from software but
+     * cannot prove StrongBox: a StrongBox key reads back as `tee`. `generateKey`
+     * reports the StrongBox level at creation, where the creation signal is
+     * available.
+     */
+    private fun securityLevelReRead(keyInfo: KeyInfo): SecurityLevel {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            return securityLevelFromCode(keyInfo.securityLevel)
+        }
+        @Suppress("DEPRECATION")
+        return if (keyInfo.isInsideSecureHardware) SecurityLevel.tee else SecurityLevel.software
+    }
+
+    /**
      * The auth class of the created key, read from its [KeyInfo] and never echoed
      * from the request. Below API 31 the Keystore does not expose the auth type;
      * an auth-required key reports `biometricOnly` as a floor, not an exact class
@@ -252,6 +361,21 @@ public class AndroidKeyStoreSigner(private val context: Context) {
          */
         private const val TAG_PREFIX = "nirapod.signet."
 
+        /** JCA algorithm for signing a pre-computed digest with an EC key. */
+        private const val SIGNATURE_ALGORITHM = "NONEwithECDSA"
+
+        /** OID of the Android key-attestation certificate extension. */
+        private const val KEY_ATTESTATION_OID = "1.3.6.1.4.1.11129.2.1.17"
+
+        /**
+         * Rejects a digest that is not exactly 32 bytes with `invalidArgument`,
+         * before any key access. A P-256 signature is over a 32-byte digest; a
+         * wrong-length input is a caller error, never a hardware failure.
+         */
+        internal fun requireDigest32(digest: ByteArray) {
+            if (digest.size != 32) throw SignetException(SignetErrorCode.invalidArgument)
+        }
+
         /** Maps a `KeyInfo.getSecurityLevel()` code (API 31+) to a [SecurityLevel]. */
         internal fun securityLevelFromCode(level: Int): SecurityLevel = when (level) {
             KeyProperties.SECURITY_LEVEL_STRONGBOX -> SecurityLevel.strongBox
@@ -280,6 +404,53 @@ public class AndroidKeyStoreSigner(private val context: Context) {
             }
             val out = ByteArray(length)
             stripped.copyInto(out, length - stripped.size)
+            return out
+        }
+
+        /**
+         * Converts a DER ECDSA signature (`SEQUENCE { INTEGER r, INTEGER s }`) to
+         * the fixed 64-byte `r || s` form, each a 32-byte big-endian integer.
+         * Returns null if the DER is malformed or a component exceeds 32 bytes;
+         * `sign` maps that to `hardwareError`. Structurally identical to the Apple
+         * core's `derToRawRS`: both decoders reject the same inputs.
+         */
+        internal fun derToRawSignature(der: ByteArray): ByteArray? {
+            if (der.size < 2 || (der[0].toInt() and 0xFF) != 0x30 || (der[1].toInt() and 0x80) != 0) {
+                return null
+            }
+            val seqLen = der[1].toInt() and 0xFF
+            if (2 + seqLen != der.size) return null
+            val r = readDerInteger(der, 2) ?: return null
+            val s = readDerInteger(der, r.second) ?: return null
+            if (s.second != der.size) return null
+            val r32 = leftPad32(r.first) ?: return null
+            val s32 = leftPad32(s.first) ?: return null
+            return r32 + s32
+        }
+
+        /**
+         * Reads one DER INTEGER at [start], returning its big-endian bytes with
+         * any positive-padding `0x00` stripped, paired with the index past it.
+         * Null if the tag, length, or bounds are malformed.
+         */
+        private fun readDerInteger(bytes: ByteArray, start: Int): Pair<ByteArray, Int>? {
+            if (start + 1 >= bytes.size) return null
+            if ((bytes[start].toInt() and 0xFF) != 0x02) return null
+            if ((bytes[start + 1].toInt() and 0x80) != 0) return null
+            val len = bytes[start + 1].toInt() and 0xFF
+            val valueStart = start + 2
+            if (len <= 0 || valueStart + len > bytes.size) return null
+            val end = valueStart + len
+            var offset = valueStart
+            while (end - offset > 1 && bytes[offset].toInt() == 0) offset++
+            return bytes.copyOfRange(offset, end) to end
+        }
+
+        /** Left-pads a big-endian integer to 32 bytes. Null if it exceeds 32. */
+        private fun leftPad32(value: ByteArray): ByteArray? {
+            if (value.size > 32) return null
+            val out = ByteArray(32)
+            value.copyInto(out, 32 - value.size)
             return out
         }
     }
