@@ -9,7 +9,7 @@ import type { HybridObject } from 'react-native-nitro-modules'
  * Scaffold: `getVersion` is the only method until the signing API lands; no key
  * material or export path is declared here.
  */
-export interface Signet extends HybridObject<{ ios: 'swift', android: 'kotlin' }> {
+export interface Signet extends HybridObject<{ ios: 'swift'; android: 'kotlin' }> {
   /** Returns the Signet library version. */
   getVersion(): string
 }

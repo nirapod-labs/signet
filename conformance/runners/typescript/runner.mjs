@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Nirapod Labs
 
 // Signet conformance runner (TypeScript/Node), scaffold stub.
-// Answers every behavior with "unimplemented", one answer per request, so an
+// Answers every behavior with "unimplemented", one answer per request; an
 // unimplemented behavior is never a silent skip. Real assertions replace the
 // stub as the binding lands.
 
@@ -19,5 +19,7 @@ lines.on('line', (line) => {
     return
   }
   if (!request.behavior) return
-  process.stdout.write(`${JSON.stringify({ behavior: request.behavior, status: 'unimplemented' })}\n`)
+  process.stdout.write(
+    `${JSON.stringify({ behavior: request.behavior, status: 'unimplemented' })}\n`,
+  )
 })

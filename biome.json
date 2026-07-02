@@ -12,9 +12,12 @@
       "**/.gradle/**",
       "**/Pods/**",
       "**/.dart_tool/**",
-      "**/nitrogen/generated/**"
+      "**/nitrogen/generated/**",
+      "react-native/SignetApp/**",
+      "flutter/SignetApp/**"
     ]
   },
   "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
+  "javascript": { "formatter": { "quoteStyle": "single", "semicolons": "asNeeded" } },
   "linter": { "enabled": true, "rules": { "recommended": true } }
 }

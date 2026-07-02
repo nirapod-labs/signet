@@ -7,10 +7,10 @@
 // matching base version, and emits a checksum manifest. It never publishes; it is
 // the version-consistency and reproducibility anchor the real release runs against.
 
-import { readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
-import { fileURLToPath } from 'node:url'
+import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const read = (relative) => readFileSync(join(ROOT, relative), 'utf8')
@@ -46,10 +46,18 @@ const materialized = packages.map((pkg) => {
   const declared = pkg.declared(text)
   const matchesBase = typeof declared === 'string' && declared.replace(/-.*$/, '') === base
   if (!matchesBase) drift = true
-  return { package: pkg.name, ecosystem: pkg.ecosystem, declared, matchesBase, sha256: digest(text) }
+  return {
+    package: pkg.name,
+    ecosystem: pkg.ecosystem,
+    declared,
+    matchesBase,
+    sha256: digest(text),
+  }
 })
 
-console.log(JSON.stringify({ version: versionFile, base, dryRun: true, packages: materialized }, null, 2))
+console.log(
+  JSON.stringify({ version: versionFile, base, dryRun: true, packages: materialized }, null, 2),
+)
 
 if (drift) {
   console.error(`\nrelease: version drift against VERSION base ${base}`)

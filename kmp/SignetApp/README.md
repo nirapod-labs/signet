@@ -5,5 +5,5 @@ the framework aligned with the `signet` plus `SignetApp` layout shared by the ot
 bindings.
 
 The example is generated from the Kotlin Multiplatform wizard (kmp.new) once the
-binding surface is defined, rather than hand-written, so it stays on the official
+binding surface is defined, rather than hand-written; it stays on the official
 project scaffold.

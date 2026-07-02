@@ -24,8 +24,8 @@ target_include_directories(signet_windows
 
 target_compile_features(signet_windows PUBLIC cxx_std_17)
 
-# The CNG key-storage backend links ncrypt on Windows. It lands with the key
-# code; the scaffold builds on every platform so the core stays portable.
+# ncrypt (CNG key store) links only on Windows; lands with the key code.
+# The guard keeps the scaffold building on every platform.
 if(WIN32)
     target_link_libraries(signet_windows PRIVATE ncrypt)
 endif()
