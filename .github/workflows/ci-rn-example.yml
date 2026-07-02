@@ -1,6 +1,7 @@
 name: rn-example
 on:
   push:
+    branches: [main]
     paths:
       - "react-native/SignetApp/**"
       - ".github/workflows/ci-rn-example.yml"

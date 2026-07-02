@@ -1,6 +1,7 @@
 name: rn-lib
 on:
   push:
+    branches: [main]
     paths:
       - "react-native/react-native-signet/**"
       - ".github/workflows/ci-rn-lib.yml"

@@ -1,6 +1,7 @@
 name: flutter-lib
 on:
   push:
+    branches: [main]
     paths:
       - "flutter/signet/**"
       - ".github/workflows/ci-flutter-lib.yml"

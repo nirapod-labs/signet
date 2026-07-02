@@ -1,6 +1,7 @@
 name: materialize-checksum
 on:
   push:
+    branches: [main]
     paths:
       - "VERSION"
       - "sdk-versions.json"

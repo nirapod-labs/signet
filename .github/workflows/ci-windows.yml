@@ -1,6 +1,7 @@
 name: windows-core
 on:
   push:
+    branches: [main]
     paths:
       - "windows/**"
       - ".github/workflows/ci-windows.yml"

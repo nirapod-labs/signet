@@ -1,6 +1,7 @@
 name: biome
 on:
   push:
+    branches: [main]
     paths:
       - "**/*.js"
       - "**/*.mjs"
