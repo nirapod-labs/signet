@@ -32,7 +32,8 @@ import Testing
         #expect(report.achieved == .secureEnclave)
         #expect(report.evidence == .seTokenPresent)  // Apple SE is never attested
         #expect(report.meetsFloor)
-        #expect(report.authEnforced == .none)         // no auth gate in this surface
+        #expect(report.requested == TierPolicy.strongest)  // populated at creation
+        #expect(report.authEnforced == AuthClass.none)     // no auth gate in this surface
         #expect(!report.invalidated)
         #expect(store.exists(alias: alias))
     }
@@ -68,7 +69,7 @@ import Testing
         let policy = AccessControlPolicy(authRequirement: .biometricOrDeviceCredential)
         do {
             let (_, report) = try store.generateKey(KeySpec(alias: alias, accessControl: policy))
-            #expect(report.authEnforced == .biometricOrDeviceCredential)
+            #expect(report.authEnforced == AuthClass.biometricOrDeviceCredential)
         } catch let error as SignetError where error == .unavailableTier || error == .hardwareError {
             // A gated key needs an enrolled biometric or a device passcode to
             // bind to; where the environment has neither, creation fails with
@@ -128,5 +129,39 @@ import Testing
 
         let raw = try store.sign(handle, digest: digest, options: SignOptions(encoding: .rawRS))
         #expect(raw.count == 64)
+    }
+
+    @Test func getSecurityTierRereadsObservableState() throws {
+        guard secureEnclaveReachable() else { return }
+        let alias = "signet.tier.\(UUID().uuidString)"
+        defer { try? store.delete(alias: alias) }
+        let (handle, _) = try store.generateKey(KeySpec(alias: alias))
+
+        let report = try store.getSecurityTier(handle)
+        #expect(report.achieved == .secureEnclave)
+        #expect(report.evidence == .seTokenPresent)
+        #expect(report.meetsFloor)
+        #expect(!report.invalidated)
+        // A re-read cannot recover the creation-time fields on Apple.
+        #expect(report.requested == nil)
+        #expect(report.authEnforced == nil)
+    }
+
+    @Test func getAttestationReturnsNoneForASecureEnclaveKey() throws {
+        guard secureEnclaveReachable() else { return }
+        let alias = "signet.attest.\(UUID().uuidString)"
+        defer { try? store.delete(alias: alias) }
+        let (handle, _) = try store.generateKey(KeySpec(alias: alias))
+
+        let result = try store.getAttestation(handle)
+        #expect(result.format == .none)
+        #expect(result.chain.isEmpty)
+    }
+
+    @Test func tierAndAttestationThrowNotFoundForAMissingKey() throws {
+        guard secureEnclaveReachable() else { return }
+        let missing = KeyHandle(alias: "signet.missing.\(UUID().uuidString)")
+        #expect(throws: SignetError.notFound) { _ = try store.getSecurityTier(missing) }
+        #expect(throws: SignetError.notFound) { _ = try store.getAttestation(missing) }
     }
 }

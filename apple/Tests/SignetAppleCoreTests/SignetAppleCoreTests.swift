@@ -120,3 +120,28 @@ import Testing
         _ = try store.sign(KeyHandle(alias: "signet.guard.unused"), digest: Data(count: 20))
     }
 }
+
+@Test func attestationResultDefaultsToAnEmptyChain() {
+    let result = AttestationResult(format: .none)
+    #expect(result.format == .none)
+    #expect(result.chain.isEmpty)
+    #expect(result.schemaVersion == 1)
+    #expect(AttestationResult.Format.androidKeyChain.rawValue == "androidKeyChain")
+}
+
+@Test func securityTierReportSeparatesNilFromAuthClassNone() {
+    // nil is unobservable at re-read; AuthClass.none is a key with no gate.
+    let reread = SecurityTierReport(
+        achieved: .secureEnclave, requested: nil, meetsFloor: true,
+        evidence: .seTokenPresent, authEnforced: nil, invalidated: false
+    )
+    #expect(reread.requested == nil)
+    #expect(reread.authEnforced == nil)
+    let created = SecurityTierReport(
+        achieved: .secureEnclave, requested: TierPolicy.strongest, meetsFloor: true,
+        evidence: .seTokenPresent, authEnforced: AuthClass.none, invalidated: false
+    )
+    #expect(created.requested == TierPolicy.strongest)
+    #expect(created.authEnforced == AuthClass.none)
+    #expect(created.authEnforced != nil)
+}

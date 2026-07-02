@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "SecurityTierReport": {
     "achieved": "SecurityLevel",
-    "requested": "TierPolicy",
+    "requested": "TierPolicy? (nil on a getSecurityTier re-read; the policy is not stored with the key)",
     "meetsFloor": "bool",
     "evidence": "TierEvidence",
-    "authEnforced": "AuthClass",
+    "authEnforced": "AuthClass? (nil on a re-read where the platform has no created access-control read-back, e.g. Apple)",
     "invalidated": "bool",
     "schemaVersion": "int"
   },
@@ -55,8 +55,8 @@
     "generateKey": "(KeySpec) -> (KeyHandle, SecurityTierReport). Tier per KeySpec.tierPolicy (strongest/atLeast fail unavailableTier below floor; bestEffort never fails on tier); existing alias FAILS keyAlreadyExists.",
     "sign": "(KeyHandle, digest[32], SignOptions?) -> Signature. Async; host-UI biometric callback; a second concurrent auth-gated sign is rejected.",
     "getPublicKey": "(KeyHandle) -> PublicKey",
-    "getAttestation": "(KeyHandle) -> AttestationResult. No call-time challenge (bound at generateKey).",
-    "getSecurityTier": "(KeyHandle) -> SecurityTierReport. On an invalidated key returns invalidated==true (no throw).",
+    "getAttestation": "(KeyHandle) -> AttestationResult. No call-time challenge (bound at generateKey). Apple SE returns format=none for any key state; a missing alias raises notFound.",
+    "getSecurityTier": "(KeyHandle) -> SecurityTierReport. On an invalidated key returns invalidated==true (no throw). On a re-read requested/authEnforced are nil where unreadable, and invalidated is best-effort (keyInvalidated on sign is authoritative); a missing alias raises notFound.",
     "exists": "(alias) -> bool",
     "delete": "(alias) -> void. Idempotent."
   }
