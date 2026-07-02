@@ -3,9 +3,8 @@
 
 /// Signet Apple core entry point.
 ///
-/// Scaffold: the module builds with no Secure Enclave access and no export
-/// symbol. The hardware-backed P-256 surface over `SecKey` and the Secure
-/// Enclave is added with the key code and proven in tests.
+/// The module exposes a hardware-backed P-256 surface over the Secure Enclave
+/// through `SecureEnclaveKeyStore`. There is no export path for private keys.
 public enum Signet {
     /// Library version, aligned with the repository VERSION file.
     public static let version = "0.1.0-dev"
