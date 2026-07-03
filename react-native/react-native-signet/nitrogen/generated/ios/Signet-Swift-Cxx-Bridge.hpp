@@ -14,6 +14,10 @@ namespace NitroModules { class ArrayBufferHolder; }
 namespace margelo::nitro::signet { struct AttestationResult; }
 // Forward declaration of `AuthClass` to properly resolve imports.
 namespace margelo::nitro::signet { enum class AuthClass; }
+// Forward declaration of `AuthPrompt` to properly resolve imports.
+namespace margelo::nitro::signet { struct AuthPrompt; }
+// Forward declaration of `AuthRequirement` to properly resolve imports.
+namespace margelo::nitro::signet { enum class AuthRequirement; }
 // Forward declaration of `GenerateResult` to properly resolve imports.
 namespace margelo::nitro::signet { struct GenerateResult; }
 // Forward declaration of `HardwareClass` to properly resolve imports.
@@ -34,6 +38,8 @@ namespace Signet { class HybridSignetSpec_cxx; }
 // Include C++ defined types
 #include "AttestationResult.hpp"
 #include "AuthClass.hpp"
+#include "AuthPrompt.hpp"
+#include "AuthRequirement.hpp"
 #include "GenerateResult.hpp"
 #include "HardwareClass.hpp"
 #include "HybridSignetSpec.hpp"
@@ -49,6 +55,7 @@ namespace Signet { class HybridSignetSpec_cxx; }
 #include <functional>
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 /**
@@ -99,6 +106,21 @@ namespace margelo::nitro::signet::bridge::swift {
     return optional.has_value();
   }
   inline AuthClass get_std__optional_AuthClass_(const std::optional<AuthClass>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::optional<double>
+  /**
+   * Specialized version of `std::optional<double>`.
+   */
+  using std__optional_double_ = std::optional<double>;
+  inline std::optional<double> create_std__optional_double_(const double& value) noexcept {
+    return std::optional<double>(value);
+  }
+  inline bool has_value_std__optional_double_(const std::optional<double>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline double get_std__optional_double_(const std::optional<double>& optional) noexcept {
     return optional.value();
   }
   
@@ -171,6 +193,36 @@ namespace margelo::nitro::signet::bridge::swift {
   Func_void_std__exception_ptr create_Func_void_std__exception_ptr(void* NON_NULL swiftClosureWrapper) noexcept;
   inline Func_void_std__exception_ptr_Wrapper wrap_Func_void_std__exception_ptr(Func_void_std__exception_ptr value) noexcept {
     return Func_void_std__exception_ptr_Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::optional<std::string>
+  /**
+   * Specialized version of `std::optional<std::string>`.
+   */
+  using std__optional_std__string_ = std::optional<std::string>;
+  inline std::optional<std::string> create_std__optional_std__string_(const std::string& value) noexcept {
+    return std::optional<std::string>(value);
+  }
+  inline bool has_value_std__optional_std__string_(const std::optional<std::string>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline std::string get_std__optional_std__string_(const std::optional<std::string>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::optional<AuthPrompt>
+  /**
+   * Specialized version of `std::optional<AuthPrompt>`.
+   */
+  using std__optional_AuthPrompt_ = std::optional<AuthPrompt>;
+  inline std::optional<AuthPrompt> create_std__optional_AuthPrompt_(const AuthPrompt& value) noexcept {
+    return std::optional<AuthPrompt>(value);
+  }
+  inline bool has_value_std__optional_AuthPrompt_(const std::optional<AuthPrompt>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline AuthPrompt get_std__optional_AuthPrompt_(const std::optional<AuthPrompt>& optional) noexcept {
+    return optional.value();
   }
   
   // pragma MARK: std::vector<std::shared_ptr<ArrayBuffer>>

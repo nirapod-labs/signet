@@ -6,8 +6,9 @@ import type { HybridObject } from 'react-native-nitro-modules'
 // The Nitro wire contract for Signet: hardware-backed P-256 signing keys over the
 // native Secure Enclave and Android Keystore cores. This is the code-generated
 // transport surface; `../signet` wraps it in the idiomatic API. No method here
-// carries key material or an export path. This surface is the non-interactive one:
-// keys are silent and signing raises no prompt.
+// carries key material or an export path. A key is silent by default or carries a
+// presence check; a gated key is signed by passing an AuthPrompt, which the native
+// side presents and authenticates directly.
 
 /** Hardware backing a key, reported as achieved and never assumed from the request. */
 export type SecurityLevel = 'secureEnclave' | 'strongBox' | 'tee' | 'tpm' | 'software'
@@ -26,6 +27,9 @@ export type AuthClass =
   | 'biometricOnly'
   | 'biometricOrDeviceCredential'
   | 'deviceCredentialOnly'
+
+/** The presence check requested for a key; three values, distinct from the four-value [AuthClass]. */
+export type AuthRequirement = 'none' | 'biometricOnly' | 'biometricOrDeviceCredential'
 
 /** A class in the tier partial order; `discreteSecure` outranks `trustedEnvironment`. */
 export type HardwareClass = 'discreteSecure' | 'trustedEnvironment'
@@ -47,6 +51,9 @@ export interface KeySpec {
   alias: string
   tierPolicyKind: TierPolicyKind
   atLeastClass?: HardwareClass
+  authRequirement: AuthRequirement
+  authValiditySeconds?: number
+  invalidateOnBiometricEnrollment: boolean
   attestationChallenge?: ArrayBuffer
 }
 
@@ -79,6 +86,18 @@ export interface SignOptions {
   encoding: SignEncoding
 }
 
+/**
+ * The prompt an auth-gated [Signet.sign] presents. The native side shows it and
+ * authenticates the hardware key directly; [authRequirement] must match the key's
+ * and selects the prompt's authenticators.
+ */
+export interface AuthPrompt {
+  title: string
+  subtitle?: string
+  negativeButtonText: string
+  authRequirement: AuthRequirement
+}
+
 /** The attestation for a key: a chain of DER certs, or `none` with no chain. Produced, never verified. */
 export interface AttestationResult {
   format: AttestationFormat
@@ -98,8 +117,18 @@ export interface Signet extends HybridObject<{ ios: 'swift'; android: 'kotlin' }
   generateKey(spec: KeySpec): GenerateResult
   /** Public key only; the private key has no export path. */
   getPublicKey(handleId: string, format: PublicKeyFormat): PublicKeyData
-  /** Signs a 32-byte digest with no prompt. A wrong-length digest fails `invalidArgument`. */
-  sign(handleId: string, digest: ArrayBuffer, options: SignOptions): Promise<ArrayBuffer>
+  /**
+   * Signs a 32-byte digest. With no [prompt] this is the silent path and raises no
+   * prompt; a non-null [prompt] drives a native biometric prompt for a gated key. A
+   * wrong-length digest fails `invalidArgument`; a second concurrent gated sign
+   * fails `authInProgress`.
+   */
+  sign(
+    handleId: string,
+    digest: ArrayBuffer,
+    options: SignOptions,
+    prompt?: AuthPrompt,
+  ): Promise<ArrayBuffer>
   /** Attestation bound at generation; takes no call-time challenge. */
   getAttestation(handleId: string): AttestationResult
   /** Re-reads a key's tier; does not throw on an invalidated-but-present key. */

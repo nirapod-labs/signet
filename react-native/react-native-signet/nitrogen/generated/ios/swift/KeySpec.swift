@@ -18,14 +18,20 @@ public extension KeySpec {
   /**
    * Create a new instance of `KeySpec`.
    */
-  init(alias: String, tierPolicyKind: TierPolicyKind, atLeastClass: HardwareClass?, attestationChallenge: ArrayBuffer?) {
+  init(alias: String, tierPolicyKind: TierPolicyKind, atLeastClass: HardwareClass?, authRequirement: AuthRequirement, authValiditySeconds: Double?, invalidateOnBiometricEnrollment: Bool, attestationChallenge: ArrayBuffer?) {
     self.init(std.string(alias), tierPolicyKind, { () -> bridge.std__optional_HardwareClass_ in
       if let __unwrappedValue = atLeastClass {
         return bridge.create_std__optional_HardwareClass_(__unwrappedValue)
       } else {
         return .init()
       }
-    }(), { () -> bridge.std__optional_std__shared_ptr_ArrayBuffer__ in
+    }(), authRequirement, { () -> bridge.std__optional_double_ in
+      if let __unwrappedValue = authValiditySeconds {
+        return bridge.create_std__optional_double_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), invalidateOnBiometricEnrollment, { () -> bridge.std__optional_std__shared_ptr_ArrayBuffer__ in
       if let __unwrappedValue = attestationChallenge {
         return bridge.create_std__optional_std__shared_ptr_ArrayBuffer__(__unwrappedValue.getArrayBuffer())
       } else {
@@ -47,6 +53,28 @@ public extension KeySpec {
   @inline(__always)
   var atLeastClass: HardwareClass? {
     return self.__atLeastClass.value
+  }
+  
+  @inline(__always)
+  var authRequirement: AuthRequirement {
+    return self.__authRequirement
+  }
+  
+  @inline(__always)
+  var authValiditySeconds: Double? {
+    return { () -> Double? in
+      if bridge.has_value_std__optional_double_(self.__authValiditySeconds) {
+        let __unwrapped = bridge.get_std__optional_double_(self.__authValiditySeconds)
+        return __unwrapped
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
+  var invalidateOnBiometricEnrollment: Bool {
+    return self.__invalidateOnBiometricEnrollment
   }
   
   @inline(__always)

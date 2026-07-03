@@ -31,10 +31,14 @@ namespace margelo::nitro::signet { struct AttestationResult; }
 namespace margelo::nitro::signet { enum class AttestationFormat; }
 // Forward declaration of `KeySpec` to properly resolve imports.
 namespace margelo::nitro::signet { struct KeySpec; }
+// Forward declaration of `AuthRequirement` to properly resolve imports.
+namespace margelo::nitro::signet { enum class AuthRequirement; }
 // Forward declaration of `SignOptions` to properly resolve imports.
 namespace margelo::nitro::signet { struct SignOptions; }
 // Forward declaration of `SignEncoding` to properly resolve imports.
 namespace margelo::nitro::signet { enum class SignEncoding; }
+// Forward declaration of `AuthPrompt` to properly resolve imports.
+namespace margelo::nitro::signet { struct AuthPrompt; }
 
 #include "GenerateResult.hpp"
 #include "JGenerateResult.hpp"
@@ -67,10 +71,14 @@ namespace margelo::nitro::signet { enum class SignEncoding; }
 #include <vector>
 #include "KeySpec.hpp"
 #include "JKeySpec.hpp"
+#include "AuthRequirement.hpp"
+#include "JAuthRequirement.hpp"
 #include "SignOptions.hpp"
 #include "JSignOptions.hpp"
 #include "SignEncoding.hpp"
 #include "JSignEncoding.hpp"
+#include "AuthPrompt.hpp"
+#include "JAuthPrompt.hpp"
 
 namespace margelo::nitro::signet {
 
@@ -115,9 +123,9 @@ namespace margelo::nitro::signet {
     auto __result = method(_javaPart, jni::make_jstring(handleId), JPublicKeyFormat::fromCpp(format));
     return __result->toCpp();
   }
-  std::shared_ptr<Promise<std::shared_ptr<ArrayBuffer>>> JHybridSignetSpec::sign(const std::string& handleId, const std::shared_ptr<ArrayBuffer>& digest, const SignOptions& options) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* handleId */, jni::alias_ref<JArrayBuffer::javaobject> /* digest */, jni::alias_ref<JSignOptions> /* options */)>("sign");
-    auto __result = method(_javaPart, jni::make_jstring(handleId), JArrayBuffer::wrap(digest), JSignOptions::fromCpp(options));
+  std::shared_ptr<Promise<std::shared_ptr<ArrayBuffer>>> JHybridSignetSpec::sign(const std::string& handleId, const std::shared_ptr<ArrayBuffer>& digest, const SignOptions& options, const std::optional<AuthPrompt>& prompt) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* handleId */, jni::alias_ref<JArrayBuffer::javaobject> /* digest */, jni::alias_ref<JSignOptions> /* options */, jni::alias_ref<JAuthPrompt> /* prompt */)>("sign");
+    auto __result = method(_javaPart, jni::make_jstring(handleId), JArrayBuffer::wrap(digest), JSignOptions::fromCpp(options), prompt.has_value() ? JAuthPrompt::fromCpp(prompt.value()) : nullptr);
     return [&]() {
       auto __promise = Promise<std::shared_ptr<ArrayBuffer>>::create();
       __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
