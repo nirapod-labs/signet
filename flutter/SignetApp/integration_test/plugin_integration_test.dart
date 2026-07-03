@@ -1,24 +1,37 @@
-// This is a basic Flutter integration test.
-//
-// Since integration tests run in a full Flutter application, they can interact
-// with the host side of a plugin implementation, unlike Dart unit tests.
-//
-// For more information about Flutter integration tests, please see
-// https://flutter.dev/to/integration-testing
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Nirapod Labs
+
+// Integration test for the non-interactive surface. It runs in a full Flutter
+// app, so it reaches the native core and the real hardware key store, unlike the
+// Dart unit tests. It is exercised on the device lane; the analyze-only CI checks
+// that it compiles against the plugin API.
+
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-
 import 'package:signet/signet.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('getPlatformVersion test', (WidgetTester tester) async {
-    final Signet plugin = Signet();
-    final String? version = await plugin.getPlatformVersion();
-    // The version string depends on the host platform running the test, so
-    // just assert that some non-empty string is returned.
-    expect(version?.isNotEmpty, true);
+  testWidgets('generate a key, read its public key, and sign a digest',
+      (WidgetTester tester) async {
+    const alias = 'signet.integration.demo';
+    final signet = Signet();
+
+    await signet.delete(alias);
+    final (KeyHandle handle, SecurityTierReport report) =
+        await signet.generateKey(alias: alias, tierPolicy: const BestEffort());
+    expect(report.evidence, isNotNull);
+
+    final publicKey = await signet.getPublicKey(handle);
+    expect(publicKey.bytes, isNotEmpty);
+
+    final digest = Uint8List.fromList(List<int>.generate(32, (i) => i));
+    final signature = await signet.sign(handle, digest);
+    expect(signature, isNotEmpty);
+
+    await signet.delete(alias);
   });
 }
