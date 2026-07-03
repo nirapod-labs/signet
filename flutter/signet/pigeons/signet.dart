@@ -35,6 +35,11 @@ enum TierPolicyKindWire { strongest, atLeast, bestEffort }
 /// `trustedEnvironment`.
 enum HardwareClassWire { discreteSecure, trustedEnvironment }
 
+/// The presence check REQUESTED for a key at generation. Three values; `none`
+/// is a silent key. Distinct from [AuthClassWire], the four-value class read
+/// back from the created key and reported in a tier report.
+enum AuthRequirementWire { none, biometricOnly, biometricOrDeviceCredential }
+
 /// The presence check bound to a created key, reported in a tier report.
 enum AuthClassWire {
   none,
@@ -52,13 +57,16 @@ enum AttestationFormatWire { androidKeyChain, none }
 /// Signature wire encoding: X9.62 DER or fixed 64-byte r||s.
 enum SignEncodingWire { der, rawRS }
 
-/// A key-generation request. Keys created through this surface carry no presence
-/// check; the achieved tier is read back from the created key, never assumed.
+/// A key-generation request. The achieved tier and auth class are read back from
+/// the created key, never assumed from the request.
 class KeySpecWire {
   KeySpecWire({
     required this.alias,
     required this.tierPolicyKind,
     this.atLeastClass,
+    required this.authRequirement,
+    this.authValiditySeconds,
+    required this.invalidateOnBiometricEnrollment,
     this.attestationChallenge,
   });
 
@@ -70,6 +78,16 @@ class KeySpecWire {
 
   /// Set only when [tierPolicyKind] is `atLeast`; null otherwise.
   final HardwareClassWire? atLeastClass;
+
+  /// The presence check to bind to the key; `none` creates a silent key.
+  final AuthRequirementWire authRequirement;
+
+  /// Auth reuse window in seconds; null and 0 both mean per-use. Baked into the
+  /// key where the platform supports it (Android); a sign-time value elsewhere.
+  final int? authValiditySeconds;
+
+  /// Whether a biometric re-enrollment invalidates the key.
+  final bool invalidateOnBiometricEnrollment;
 
   /// Bound into the key at generation; there is no call-time challenge.
   final Uint8List? attestationChallenge;
@@ -140,6 +158,28 @@ class PublicKeyWire {
   final Uint8List bytes;
 }
 
+/// The prompt for an auth-gated sign, non-null on [SignetHostApi.sign] only for a
+/// gated key. The native side presents it and authenticates the hardware key
+/// directly; a Dart-shown prompt could not. [authRequirement] must match the
+/// key's and selects the prompt's authenticators.
+class AuthPromptWire {
+  AuthPromptWire({
+    required this.title,
+    this.subtitle,
+    required this.negativeButtonText,
+    required this.authRequirement,
+  });
+
+  final String title;
+  final String? subtitle;
+
+  /// The fallback button label on a biometric-only prompt.
+  final String negativeButtonText;
+
+  /// Selects the prompt's authenticators; matches the key's requirement.
+  final AuthRequirementWire authRequirement;
+}
+
 /// The calls Dart makes into the native core. Errors do not cross as data: the
 /// core throws a platform error whose code is one of the closed error tokens in
 /// `conformance/errors.json`, which the idiomatic layer maps to a typed
@@ -155,10 +195,19 @@ abstract class SignetHostApi {
   /// Public key only; the private key has no export path.
   PublicKeyWire getPublicKey(String handleId, PublicKeyFormatWire format);
 
-  /// Signs a 32-byte digest with no authentication prompt. A wrong-length digest
-  /// is rejected `invalidArgument` before any key access.
+  /// Signs a 32-byte digest. A null [prompt] is the silent path and raises no
+  /// prompt; a non-null [prompt] drives an auth-gated sign whose biometric prompt
+  /// the native side presents and authenticates directly. A wrong-length digest
+  /// is rejected `invalidArgument` before any key access. A second concurrent
+  /// gated sign is rejected `authInProgress`; a gated key with no presentable host
+  /// UI raises `authContextRequired`.
   @async
-  Uint8List sign(String handleId, Uint8List digest, SignOptionsWire options);
+  Uint8List sign(
+    String handleId,
+    Uint8List digest,
+    SignOptionsWire options,
+    AuthPromptWire? prompt,
+  );
 
   /// Attestation bound at generation; takes no call-time challenge.
   AttestationResultWire getAttestation(String handleId);

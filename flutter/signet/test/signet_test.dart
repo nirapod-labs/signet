@@ -75,6 +75,38 @@ void main() {
 
       expect(host.lastGenerateSpec!.attestationChallenge, challenge);
     });
+
+    test('marshals the access-control request', () async {
+      host.generateResult = GenerateResultWire(
+        handleId: 'gated',
+        report: _report(SecurityLevelWire.secureEnclave),
+      );
+
+      await signet.generateKey(
+        alias: 'gated',
+        authRequirement: AuthRequirement.biometricOrDeviceCredential,
+        authValiditySeconds: 30,
+        invalidateOnBiometricEnrollment: false,
+      );
+
+      expect(host.lastGenerateSpec!.authRequirement,
+          AuthRequirementWire.biometricOrDeviceCredential);
+      expect(host.lastGenerateSpec!.authValiditySeconds, 30);
+      expect(host.lastGenerateSpec!.invalidateOnBiometricEnrollment, isFalse);
+    });
+
+    test('defaults to a silent key with enrollment invalidation on', () async {
+      host.generateResult = GenerateResultWire(
+        handleId: 'k',
+        report: _report(SecurityLevelWire.secureEnclave),
+      );
+
+      await signet.generateKey(alias: 'k');
+
+      expect(host.lastGenerateSpec!.authRequirement, AuthRequirementWire.none);
+      expect(host.lastGenerateSpec!.authValiditySeconds, isNull);
+      expect(host.lastGenerateSpec!.invalidateOnBiometricEnrollment, isTrue);
+    });
   });
 
   group('getSecurityTier', () {
@@ -132,6 +164,38 @@ void main() {
       expect(out, signature);
       expect(host.lastSignDigest, digest);
       expect(host.lastSignOptions!.encoding, SignEncodingWire.rawRS);
+    });
+
+    test('a silent sign passes a null prompt', () async {
+      host.signResult = Uint8List.fromList([1]);
+      final digest = Uint8List.fromList(List<int>.filled(32, 9));
+
+      await signet.sign(const KeyHandle('k'), digest);
+
+      expect(host.lastSignPrompt, isNull);
+    });
+
+    test('a gated sign marshals the prompt', () async {
+      host.signResult = Uint8List.fromList([1]);
+      final digest = Uint8List.fromList(List<int>.filled(32, 9));
+
+      await signet.sign(
+        const KeyHandle('k'),
+        digest,
+        prompt: const AuthPrompt(
+          title: 'Approve',
+          subtitle: 'Sign the transaction',
+          negativeButtonText: 'No',
+          authRequirement: AuthRequirement.biometricOnly,
+        ),
+      );
+
+      final prompt = host.lastSignPrompt;
+      expect(prompt, isNotNull);
+      expect(prompt!.title, 'Approve');
+      expect(prompt.subtitle, 'Sign the transaction');
+      expect(prompt.negativeButtonText, 'No');
+      expect(prompt.authRequirement, AuthRequirementWire.biometricOnly);
     });
   });
 
@@ -251,6 +315,7 @@ class _FakeHost extends SignetHostApi {
   KeySpecWire? lastGenerateSpec;
   Uint8List? lastSignDigest;
   SignOptionsWire? lastSignOptions;
+  AuthPromptWire? lastSignPrompt;
   PublicKeyFormatWire? lastPublicKeyFormat;
   String? lastAlias;
 
@@ -284,9 +349,11 @@ class _FakeHost extends SignetHostApi {
     String handleId,
     Uint8List digest,
     SignOptionsWire options,
+    AuthPromptWire? prompt,
   ) async {
     lastSignDigest = digest;
     lastSignOptions = options;
+    lastSignPrompt = prompt;
     if (error != null) throw error!;
     return signResult!;
   }

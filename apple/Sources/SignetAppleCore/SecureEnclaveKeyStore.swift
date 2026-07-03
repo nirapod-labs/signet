@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Nirapod Labs
 
 import Foundation
+import LocalAuthentication
 import Security
 
 /// Secure Enclave-backed P-256 key store for iOS and macOS.
@@ -14,6 +15,10 @@ public struct SecureEnclaveKeyStore: Sendable {
     /// Namespaces the application tag so Signet keys do not collide with other
     /// keychain items in the app's access group.
     private static let tagPrefix = "nirapod.signet."
+
+    /// Serializes auth-gated signing so two biometric prompts never contend for
+    /// the key. A reference type; copies of this value-type store share it.
+    private let signGate = SignGate()
 
     public init() {}
 
@@ -132,6 +137,132 @@ public struct SecureEnclaveKeyStore: Sendable {
         }
     }
 
+    /// Signs a 32-byte digest with an auth-gated key, presenting the biometric
+    /// prompt through the Secure Enclave and suspending until the user responds.
+    /// Auth-gated signing is serialized: a second call issued while a prompt is
+    /// still outstanding is rejected with `authInProgress`. The digest guard and
+    /// the `options` encoding match the silent `sign`.
+    ///
+    /// Apple exposes no dedicated invalidation code, so a key invalidated by a
+    /// biometric re-enrollment surfaces here as `authFailed` (or `notFound`), not
+    /// `keyInvalidated`; this weaker probing is contract-allowed and mirrors the
+    /// silent path and `getSecurityTier`.
+    ///
+    /// - Throws: `invalidArgument` if the digest is not 32 bytes; `authInProgress`
+    ///   if a gated sign is already in progress; `notFound` if no key exists;
+    ///   `userCanceled` if the user dismissed the prompt; `authFailed` if
+    ///   authentication failed; `authContextRequired` if no prompt could be
+    ///   presented; `hardwareError` on any other signing failure.
+    public func sign(
+        _ handle: KeyHandle,
+        digest: Data,
+        prompt: AuthPrompt,
+        options: SignOptions = SignOptions()
+    ) async throws -> Data {
+        guard digest.count == 32 else {
+            throw SignetError.invalidArgument
+        }
+        guard signGate.tryEnter() else {
+            throw SignetError.authInProgress
+        }
+        defer { signGate.exit() }
+        // SecKeyCreateSignature blocks the calling thread while the Enclave
+        // presents the prompt; Apple directs this off the main thread.
+        return try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                continuation.resume(with: Result {
+                    try self.gatedSign(handle, digest: digest, prompt: prompt, options: options)
+                })
+            }
+        }
+    }
+
+    /// The blocking body of the gated `sign`: attaches an `LAContext` carrying the
+    /// prompt's reason to the key fetch, so the Enclave presents that reason when
+    /// the signature triggers authentication, then maps a failure through
+    /// `mapGatedSignFailure`. `kSecUseOperationPrompt` is deprecated; the reason is
+    /// carried on the context via `kSecUseAuthenticationContext`.
+    private func gatedSign(
+        _ handle: KeyHandle,
+        digest: Data,
+        prompt: AuthPrompt,
+        options: SignOptions
+    ) throws -> Data {
+        let context = LAContext()
+        context.localizedReason = Self.reason(for: prompt)
+        context.localizedCancelTitle = prompt.negativeButtonText
+        let key = try fetchKey(alias: handle.alias, context: context)
+        var cfError: Unmanaged<CFError>?
+        guard let der = SecKeyCreateSignature(
+            key,
+            .ecdsaSignatureDigestX962SHA256,
+            digest as CFData,
+            &cfError
+        ) as Data? else {
+            throw Self.mapGatedSignFailure(cfError?.takeRetainedValue())
+        }
+        switch options.encoding {
+        case .der:
+            return der
+        case .rawRS:
+            guard let raw = Self.derToRawRS(der) else {
+                throw SignetError.hardwareError
+            }
+            return raw
+        }
+    }
+
+    /// The single reason line for the biometric prompt: the title, with the
+    /// subtitle appended below it when present. Apple's prompt has no separate
+    /// subtitle field.
+    static func reason(for prompt: AuthPrompt) -> String {
+        guard let subtitle = prompt.subtitle, !subtitle.isEmpty else {
+            return prompt.title
+        }
+        return "\(prompt.title)\n\(subtitle)"
+    }
+
+    /// Maps a gated-sign failure to the closed error set. A dismissed prompt is
+    /// `userCanceled`; a failed authentication (and, indistinguishably on Apple, a
+    /// re-enrollment-invalidated key) is `authFailed`; a prompt that could not be
+    /// presented is `authContextRequired`. The Security framework surfaces OSStatus
+    /// codes and LocalAuthentication its own `LAError` codes; both are mapped, and
+    /// every other code is `hardwareError`.
+    static func mapGatedSignFailure(_ error: CFError?) -> SignetError {
+        guard let error else { return .hardwareError }
+        let domain = CFErrorGetDomain(error) as String
+        let code = CFErrorGetCode(error)
+        if domain == LAErrorDomain {
+            switch code {
+            case LAError.Code.userCancel.rawValue,
+                 LAError.Code.appCancel.rawValue,
+                 LAError.Code.systemCancel.rawValue:
+                return .userCanceled
+            case LAError.Code.authenticationFailed.rawValue,
+                 LAError.Code.biometryLockout.rawValue:
+                return .authFailed
+            case LAError.Code.notInteractive.rawValue,
+                 LAError.Code.invalidContext.rawValue,
+                 LAError.Code.passcodeNotSet.rawValue,
+                 LAError.Code.biometryNotAvailable.rawValue,
+                 LAError.Code.biometryNotEnrolled.rawValue:
+                return .authContextRequired
+            default:
+                return .hardwareError
+            }
+        }
+        switch code {
+        case Int(errSecUserCanceled):
+            return .userCanceled
+        case Int(errSecAuthFailed):
+            return .authFailed
+        case Int(errSecInteractionNotAllowed):
+            return .authContextRequired
+        default:
+            return .hardwareError
+        }
+    }
+
     /// Re-reads the tier of an existing key. Does not throw on an invalidated
     /// key. `requested` and `authEnforced` come back nil (unreadable on Apple);
     /// `invalidated` is `false` here. The Secure Enclave has no non-prompting
@@ -204,9 +335,10 @@ public struct SecureEnclaveKeyStore: Sendable {
     /// no public accessor for it.
     ///
     /// - Throws: `notFound` if no key exists; `hardwareError` on any other
-    ///   keychain failure.
-    func fetchKey(alias: String) throws -> SecKey {
-        let query: [String: Any] = [
+    ///   keychain failure. A non-nil `context` attaches an authentication context
+    ///   so a later gated operation on the key presents that context's prompt.
+    func fetchKey(alias: String, context: LAContext? = nil) throws -> SecKey {
+        var query: [String: Any] = [
             kSecClass as String: kSecClassKey,
             kSecAttrApplicationTag as String: tag(for: alias),
             kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
@@ -214,6 +346,9 @@ public struct SecureEnclaveKeyStore: Sendable {
             kSecUseDataProtectionKeychain as String: true,
             kSecReturnRef as String: true,
         ]
+        if let context {
+            query[kSecUseAuthenticationContext as String] = context
+        }
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
         guard status == errSecSuccess else {
@@ -328,5 +463,31 @@ public struct SecureEnclaveKeyStore: Sendable {
     /// Application tag for an alias: the library namespace prefix plus the alias.
     private func tag(for alias: String) -> Data {
         Data((Self.tagPrefix + alias).utf8)
+    }
+}
+
+/// Serializes auth-gated signing: a second gated `sign` issued while a prompt is
+/// still outstanding is rejected, so two biometric prompts never contend for the
+/// key. The Android core enforces the same rule; the mechanism differs, the
+/// contract does not. `@unchecked Sendable` because the lock, not the type system,
+/// guards the single mutable flag.
+private final class SignGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var busy = false
+
+    /// Enters the gate if it is free, reporting whether entry succeeded.
+    func tryEnter() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if busy { return false }
+        busy = true
+        return true
+    }
+
+    /// Leaves the gate, admitting the next gated sign.
+    func exit() {
+        lock.lock()
+        defer { lock.unlock() }
+        busy = false
     }
 }
