@@ -56,7 +56,7 @@ namespace margelo::nitro::signet {
     // Methods
     GenerateResult generateKey(const KeySpec& spec) override;
     PublicKeyData getPublicKey(const std::string& handleId, PublicKeyFormat format) override;
-    std::shared_ptr<Promise<std::shared_ptr<ArrayBuffer>>> sign(const std::string& handleId, const std::shared_ptr<ArrayBuffer>& digest, const SignOptions& options) override;
+    std::shared_ptr<Promise<std::shared_ptr<ArrayBuffer>>> sign(const std::string& handleId, const std::shared_ptr<ArrayBuffer>& digest, const SignOptions& options, const std::optional<AuthPrompt>& prompt) override;
     AttestationResult getAttestation(const std::string& handleId) override;
     SecurityTierReport getSecurityTier(const std::string& handleId) override;
     bool exists(const std::string& alias) override;

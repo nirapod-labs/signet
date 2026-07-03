@@ -14,6 +14,10 @@ namespace margelo::nitro::signet { enum class AttestationFormat; }
 namespace margelo::nitro::signet { struct AttestationResult; }
 // Forward declaration of `AuthClass` to properly resolve imports.
 namespace margelo::nitro::signet { enum class AuthClass; }
+// Forward declaration of `AuthPrompt` to properly resolve imports.
+namespace margelo::nitro::signet { struct AuthPrompt; }
+// Forward declaration of `AuthRequirement` to properly resolve imports.
+namespace margelo::nitro::signet { enum class AuthRequirement; }
 // Forward declaration of `GenerateResult` to properly resolve imports.
 namespace margelo::nitro::signet { struct GenerateResult; }
 // Forward declaration of `HardwareClass` to properly resolve imports.
@@ -43,6 +47,8 @@ namespace margelo::nitro::signet { enum class TierPolicyKind; }
 #include "AttestationFormat.hpp"
 #include "AttestationResult.hpp"
 #include "AuthClass.hpp"
+#include "AuthPrompt.hpp"
+#include "AuthRequirement.hpp"
 #include "GenerateResult.hpp"
 #include "HardwareClass.hpp"
 #include "HybridSignetSpec.hpp"

@@ -8,8 +8,9 @@ import SignetAppleCore
 /// The Nitro HybridObject for iOS and macOS. Subclasses the generated
 /// `HybridSignetSpec` and forwards every call to `SecureEnclaveKeyStore` in the
 /// `apple/` core. It holds no policy and no key material; the core is the only code
-/// that touches the Secure Enclave. This is the non-interactive surface: keys are
-/// silent and signing raises no prompt.
+/// that touches the Secure Enclave. A key is silent by default or carries a presence
+/// check; a gated key is signed by passing an `AuthPrompt`, which the core presents
+/// through the Secure Enclave and authenticates directly.
 ///
 /// The generated Nitro wire types share short names with the core (`KeySpec`,
 /// `SecurityTierReport`, ...); the core is always spelled `SignetAppleCore.` here
@@ -33,15 +34,36 @@ final class HybridSignet: HybridSignetSpec {
     }
   }
 
-  func sign(handleId: String, digest: ArrayBuffer, options: SignOptions) throws -> Promise<ArrayBuffer> {
+  func sign(
+    handleId: String,
+    digest: ArrayBuffer,
+    options: SignOptions,
+    prompt: AuthPrompt?
+  ) throws -> Promise<ArrayBuffer> {
     // Copy the digest out before the async hop; the buffer is only valid for the
     // synchronous call.
     let data = digest.toData(copyIfNeeded: true)
     let store = self.store
     let coreOptions = SignetAppleCore.SignOptions(encoding: coreEncoding(options.encoding))
+    guard let prompt else {
+      // Silent path: no prompt, the synchronous core sign.
+      return Promise.async {
+        try coded {
+          let signature = try store.sign(KeyHandle(alias: handleId), digest: data, options: coreOptions)
+          return try ArrayBuffer.copy(data: signature)
+        }
+      }
+    }
+    // Gated path: the core presents the Enclave prompt off the main thread; await it.
+    let corePrompt = coreAuthPrompt(prompt)
     return Promise.async {
-      try coded {
-        let signature = try store.sign(KeyHandle(alias: handleId), digest: data, options: coreOptions)
+      try await codedAsync {
+        let signature = try await store.sign(
+          KeyHandle(alias: handleId),
+          digest: data,
+          prompt: corePrompt,
+          options: coreOptions
+        )
         return try ArrayBuffer.copy(data: signature)
       }
     }
@@ -88,6 +110,20 @@ private func coded<T>(_ block: () throws -> T) throws -> T {
   }
 }
 
+/// The async form of `coded`, for the gated `sign`. A distinct name (rather than an
+/// overload) keeps resolution unambiguous inside a `Promise.async` body.
+private func codedAsync<T>(_ block: () async throws -> T) async throws -> T {
+  do {
+    return try await block()
+  } catch let error as SignetError {
+    throw SignetHybridError(token: error.token)
+  } catch let error as SignetHybridError {
+    throw error
+  } catch {
+    throw SignetHybridError(token: "hardwareError")
+  }
+}
+
 private extension SignetError {
   /// The closed-set wire token for this case; pinned to `conformance/errors.json`.
   var token: String {
@@ -124,14 +160,33 @@ private func coreKeySpec(_ spec: KeySpec) throws -> SignetAppleCore.KeySpec {
   default:
     throw SignetError.invalidArgument
   }
+  let accessControl = SignetAppleCore.AccessControlPolicy(
+    authRequirement: coreAuthRequirement(spec.authRequirement),
+    authValiditySeconds: spec.authValiditySeconds.map { Int($0) },
+    invalidateOnBiometricEnrollment: spec.invalidateOnBiometricEnrollment
+  )
   // The Secure Enclave has no per-key attestation, so the wire challenge has no
-  // effect on Apple; getAttestation returns none regardless. The silent surface
-  // creates keys with no presence check.
-  return SignetAppleCore.KeySpec(alias: spec.alias, tierPolicy: policy, accessControl: .none)
+  // effect on Apple; getAttestation returns none regardless.
+  return SignetAppleCore.KeySpec(alias: spec.alias, tierPolicy: policy, accessControl: accessControl)
 }
 
 private func coreHardwareClass(_ value: HardwareClass) -> SignetAppleCore.HardwareClass {
   SignetAppleCore.HardwareClass(rawValue: value.stringValue) ?? .discreteSecure
+}
+
+private func coreAuthRequirement(
+  _ value: AuthRequirement
+) -> SignetAppleCore.AccessControlPolicy.AuthRequirement {
+  SignetAppleCore.AccessControlPolicy.AuthRequirement(rawValue: value.stringValue) ?? .none
+}
+
+private func coreAuthPrompt(_ prompt: AuthPrompt) -> SignetAppleCore.AuthPrompt {
+  SignetAppleCore.AuthPrompt(
+    title: prompt.title,
+    subtitle: prompt.subtitle,
+    negativeButtonText: prompt.negativeButtonText,
+    authRequirement: coreAuthRequirement(prompt.authRequirement)
+  )
 }
 
 private func coreFormat(_ value: PublicKeyFormat) -> PublicKey.Format {

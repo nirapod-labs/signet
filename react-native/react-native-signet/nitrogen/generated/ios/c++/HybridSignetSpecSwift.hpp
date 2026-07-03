@@ -28,6 +28,8 @@ namespace margelo::nitro::signet { enum class TierEvidence; }
 namespace margelo::nitro::signet { enum class AuthClass; }
 // Forward declaration of `KeySpec` to properly resolve imports.
 namespace margelo::nitro::signet { struct KeySpec; }
+// Forward declaration of `AuthRequirement` to properly resolve imports.
+namespace margelo::nitro::signet { enum class AuthRequirement; }
 // Forward declaration of `ArrayBufferHolder` to properly resolve imports.
 namespace NitroModules { class ArrayBufferHolder; }
 // Forward declaration of `PublicKeyData` to properly resolve imports.
@@ -38,6 +40,8 @@ namespace margelo::nitro::signet { enum class PublicKeyFormat; }
 namespace margelo::nitro::signet { struct SignOptions; }
 // Forward declaration of `SignEncoding` to properly resolve imports.
 namespace margelo::nitro::signet { enum class SignEncoding; }
+// Forward declaration of `AuthPrompt` to properly resolve imports.
+namespace margelo::nitro::signet { struct AuthPrompt; }
 // Forward declaration of `AttestationResult` to properly resolve imports.
 namespace margelo::nitro::signet { struct AttestationResult; }
 // Forward declaration of `AttestationFormat` to properly resolve imports.
@@ -53,6 +57,7 @@ namespace margelo::nitro::signet { enum class AttestationFormat; }
 #include "TierEvidence.hpp"
 #include "AuthClass.hpp"
 #include "KeySpec.hpp"
+#include "AuthRequirement.hpp"
 #include <NitroModules/ArrayBuffer.hpp>
 #include <NitroModules/ArrayBufferHolder.hpp>
 #include "PublicKeyData.hpp"
@@ -60,6 +65,7 @@ namespace margelo::nitro::signet { enum class AttestationFormat; }
 #include <NitroModules/Promise.hpp>
 #include "SignOptions.hpp"
 #include "SignEncoding.hpp"
+#include "AuthPrompt.hpp"
 #include "AttestationResult.hpp"
 #include "AttestationFormat.hpp"
 #include <vector>
@@ -130,8 +136,8 @@ namespace margelo::nitro::signet {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline std::shared_ptr<Promise<std::shared_ptr<ArrayBuffer>>> sign(const std::string& handleId, const std::shared_ptr<ArrayBuffer>& digest, const SignOptions& options) override {
-      auto __result = _swiftPart.sign(handleId, ArrayBufferHolder(digest), std::forward<decltype(options)>(options));
+    inline std::shared_ptr<Promise<std::shared_ptr<ArrayBuffer>>> sign(const std::string& handleId, const std::shared_ptr<ArrayBuffer>& digest, const SignOptions& options, const std::optional<AuthPrompt>& prompt) override {
+      auto __result = _swiftPart.sign(handleId, ArrayBufferHolder(digest), std::forward<decltype(options)>(options), prompt);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }

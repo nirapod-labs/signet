@@ -3,12 +3,15 @@
 
 package xyz.nirapod.signet
 
+import androidx.fragment.app.FragmentActivity
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.ArrayBuffer
 import com.margelo.nitro.core.Promise
 import com.margelo.nitro.signet.HybridSignetSpec
 import com.margelo.nitro.signet.AttestationFormat as WireAttestationFormat
 import com.margelo.nitro.signet.AttestationResult as WireAttestationResult
+import com.margelo.nitro.signet.AuthPrompt as WireAuthPrompt
+import com.margelo.nitro.signet.AuthRequirement as WireAuthRequirement
 import com.margelo.nitro.signet.GenerateResult as WireGenerateResult
 import com.margelo.nitro.signet.HardwareClass as WireHardwareClass
 import com.margelo.nitro.signet.KeySpec as WireKeySpec
@@ -20,13 +23,15 @@ import com.margelo.nitro.signet.SignEncoding as WireSignEncoding
 import com.margelo.nitro.signet.SignOptions as WireSignOptions
 import com.margelo.nitro.signet.TierEvidence as WireTierEvidence
 import com.margelo.nitro.signet.TierPolicyKind as WireTierPolicyKind
+import kotlinx.coroutines.CancellationException
 
 /**
  * The Nitro HybridObject for Android. Subclasses the generated [HybridSignetSpec]
  * and forwards every call to [AndroidKeyStoreSigner] in the `android/` core. It
  * holds no policy and no key material; the core is the only code that touches the
- * Keystore. This is the non-interactive surface: keys are silent and signing raises
- * no prompt.
+ * Keystore. A key is silent by default or carries a presence check; a gated key is
+ * signed by passing an auth prompt, whose biometric UI the core hosts on the current
+ * activity.
  *
  * The core types are unqualified (same package); the generated Nitro wire types are
  * imported with a `Wire` prefix. Wire enums are the Nitro UPPER_CASE constants; the
@@ -49,15 +54,35 @@ class HybridSignet : HybridSignetSpec() {
     WirePublicKeyData(format = publicKey.format.toWire(), bytes = ArrayBuffer.copy(publicKey.bytes))
   }
 
-  override fun sign(handleId: String, digest: ArrayBuffer, options: WireSignOptions): Promise<ArrayBuffer> {
+  override fun sign(
+    handleId: String,
+    digest: ArrayBuffer,
+    options: WireSignOptions,
+    prompt: WireAuthPrompt?,
+  ): Promise<ArrayBuffer> {
     // Copy the digest out unconditionally before the async hop. toByteArray can
     // alias a CPU-backed buffer; an explicit copy prevents a mutation between here
     // and the background sign.
     val digestBytes = ArrayBuffer.copy(digest).toByteArray()
     val coreOptions = SignOptions(encoding = options.encoding.toCore())
+    if (prompt == null) {
+      // Silent path: no prompt, the synchronous core sign.
+      return Promise.async {
+        coded {
+          val signature = signer.sign(KeyHandle(handleId), digestBytes, coreOptions)
+          ArrayBuffer.copy(signature)
+        }
+      }
+    }
+    // Gated path: a biometric prompt needs a FragmentActivity to host it. The host
+    // app's ReactActivity is one; a null or non-Fragment activity fails
+    // authContextRequired rather than crashing.
+    val activity = NitroModules.applicationContext?.currentActivity as? FragmentActivity
+      ?: return Promise.rejected<ArrayBuffer>(RuntimeException(SignetErrorCode.authContextRequired.name))
+    val authContext = prompt.toAuthContext(activity)
     return Promise.async {
       coded {
-        val signature = signer.sign(KeyHandle(handleId), digestBytes, coreOptions)
+        val signature = signer.sign(KeyHandle(handleId), digestBytes, authContext, coreOptions)
         ArrayBuffer.copy(signature)
       }
     }
@@ -83,14 +108,17 @@ class HybridSignet : HybridSignetSpec() {
 /**
  * Runs a core call, rethrowing a [SignetException] as an exception whose message is
  * the closed-set token. Nitro has no structured error-code channel, so the token
- * travels in the message; the idiomatic TS layer maps it back. A non-[SignetException]
- * fails closed to `hardwareError`.
+ * travels in the message; the idiomatic TS layer maps it back. Coroutine
+ * cancellation propagates untouched; any other non-[SignetException] fails closed to
+ * `hardwareError`.
  */
 private inline fun <T> coded(block: () -> T): T =
   try {
     block()
   } catch (failure: SignetException) {
     throw RuntimeException(failure.code.name, failure)
+  } catch (cancellation: CancellationException) {
+    throw cancellation
   } catch (failure: Throwable) {
     throw RuntimeException(SignetErrorCode.hardwareError.name, failure)
   }
@@ -106,7 +134,11 @@ private fun WireKeySpec.toCore(): KeySpec = KeySpec(
     )
     WireTierPolicyKind.BESTEFFORT -> TierPolicy.BestEffort
   },
-  accessControl = AccessControlPolicy.None,
+  accessControl = AccessControlPolicy(
+    authRequirement = authRequirement.toCore(),
+    authValiditySeconds = authValiditySeconds?.toInt(),
+    invalidateOnBiometricEnrollment = invalidateOnBiometricEnrollment,
+  ),
   attestationChallenge = attestationChallenge?.toByteArray(),
 )
 
@@ -114,6 +146,20 @@ private fun WireHardwareClass.toCore(): HardwareClass = when (this) {
   WireHardwareClass.DISCRETESECURE -> HardwareClass.discreteSecure
   WireHardwareClass.TRUSTEDENVIRONMENT -> HardwareClass.trustedEnvironment
 }
+
+private fun WireAuthRequirement.toCore(): AuthRequirement = when (this) {
+  WireAuthRequirement.NONE -> AuthRequirement.none
+  WireAuthRequirement.BIOMETRICONLY -> AuthRequirement.biometricOnly
+  WireAuthRequirement.BIOMETRICORDEVICECREDENTIAL -> AuthRequirement.biometricOrDeviceCredential
+}
+
+private fun WireAuthPrompt.toAuthContext(activity: FragmentActivity): AuthContext = AuthContext(
+  activity = activity,
+  title = title,
+  authRequirement = authRequirement.toCore(),
+  subtitle = subtitle,
+  negativeButtonText = negativeButtonText,
+)
 
 private fun WirePublicKeyFormat.toCore(): PublicKey.Format = when (this) {
   WirePublicKeyFormat.RAWX962 -> PublicKey.Format.rawX962

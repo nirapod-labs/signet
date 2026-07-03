@@ -15,7 +15,7 @@ public protocol HybridSignetSpec_protocol: HybridObject {
   // Methods
   func generateKey(spec: KeySpec) throws -> GenerateResult
   func getPublicKey(handleId: String, format: PublicKeyFormat) throws -> PublicKeyData
-  func sign(handleId: String, digest: ArrayBuffer, options: SignOptions) throws -> Promise<ArrayBuffer>
+  func sign(handleId: String, digest: ArrayBuffer, options: SignOptions, prompt: AuthPrompt?) throws -> Promise<ArrayBuffer>
   func getAttestation(handleId: String) throws -> AttestationResult
   func getSecurityTier(handleId: String) throws -> SecurityTierReport
   func exists(alias: String) throws -> Bool

@@ -40,7 +40,7 @@ abstract class HybridSignetSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun sign(handleId: String, digest: ArrayBuffer, options: SignOptions): Promise<ArrayBuffer>
+  abstract fun sign(handleId: String, digest: ArrayBuffer, options: SignOptions, prompt: AuthPrompt?): Promise<ArrayBuffer>
   
   @DoNotStrip
   @Keep

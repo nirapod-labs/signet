@@ -29,6 +29,15 @@ data class KeySpec(
   val atLeastClass: HardwareClass?,
   @DoNotStrip
   @Keep
+  val authRequirement: AuthRequirement,
+  @DoNotStrip
+  @Keep
+  val authValiditySeconds: Double?,
+  @DoNotStrip
+  @Keep
+  val invalidateOnBiometricEnrollment: Boolean,
+  @DoNotStrip
+  @Keep
   val attestationChallenge: ArrayBuffer?
 ) {
   /* primary constructor */
@@ -39,6 +48,9 @@ data class KeySpec(
     return Objects.deepEquals(this.alias, other.alias)
       && Objects.deepEquals(this.tierPolicyKind, other.tierPolicyKind)
       && Objects.deepEquals(this.atLeastClass, other.atLeastClass)
+      && Objects.deepEquals(this.authRequirement, other.authRequirement)
+      && Objects.deepEquals(this.authValiditySeconds, other.authValiditySeconds)
+      && Objects.deepEquals(this.invalidateOnBiometricEnrollment, other.invalidateOnBiometricEnrollment)
       && Objects.deepEquals(this.attestationChallenge, other.attestationChallenge)
   }
 
@@ -47,6 +59,9 @@ data class KeySpec(
       alias,
       tierPolicyKind,
       atLeastClass,
+      authRequirement,
+      authValiditySeconds,
+      invalidateOnBiometricEnrollment,
       attestationChallenge
     ).contentDeepHashCode()
   }
@@ -59,8 +74,8 @@ data class KeySpec(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(alias: String, tierPolicyKind: TierPolicyKind, atLeastClass: HardwareClass?, attestationChallenge: ArrayBuffer?): KeySpec {
-      return KeySpec(alias, tierPolicyKind, atLeastClass, attestationChallenge)
+    private fun fromCpp(alias: String, tierPolicyKind: TierPolicyKind, atLeastClass: HardwareClass?, authRequirement: AuthRequirement, authValiditySeconds: Double?, invalidateOnBiometricEnrollment: Boolean, attestationChallenge: ArrayBuffer?): KeySpec {
+      return KeySpec(alias, tierPolicyKind, atLeastClass, authRequirement, authValiditySeconds, invalidateOnBiometricEnrollment, attestationChallenge)
     }
   }
 }
