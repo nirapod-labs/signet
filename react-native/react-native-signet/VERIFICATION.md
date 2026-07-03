@@ -1,8 +1,8 @@
 # Signet React Native binding verification
 
 The React Native binding is a thin Nitro HybridObject over the `apple/` and
-`android/` cores. It holds no key material and no cryptography; every
-security-bearing operation runs in a core. A key is silent by default or carries a
+`android/` cores, on iOS, macOS, and Android. It holds no key material and no
+cryptography; every security-bearing operation runs in a core. A key is silent by default or carries a
 presence check, and a gated key is signed by passing an `AuthPrompt` the native
 side presents and authenticates directly. This records what is checked and what
 needs a device.
@@ -23,6 +23,25 @@ mapping. `biome` formats and lints the same files.
 JSI glue) from the spec, including the grown `sign` signature, the `AuthPrompt`
 struct, and the `AuthRequirement` enum. The regenerated bases fix the exact
 override signatures the native HybridObjects implement.
+
+## macOS (react-native-macos)
+
+The binding serves iOS and macOS from one Swift HybridObject. react-native-macos
+uses the same Apple native-module infrastructure as iOS, and Nitro's platform map
+has no separate macOS key, so the `ios` Swift implementation and the generated
+autolinking cover both; the only macOS-specific wiring is the podspec platform
+line (`Signet.podspec` declares `:osx`).
+
+- The `SignetAppleCore` pod compiles for macOS: `pod lib lint
+  apple/SignetAppleCore.podspec --platforms=macos` passes. This is the same
+  Secure Enclave core the Flutter binding builds for macOS through SPM.
+- The binding's Swift is unchanged from the iOS build and uses only cross-platform
+  frameworks (Foundation, Security, LocalAuthentication, NitroModules), all present
+  on macOS. A Mac with a usable Secure Enclave (Apple silicon, or a T2 Intel Mac)
+  signs; a Mac without one fails closed with `unavailableTier`, never a software
+  key, exactly as the core does on every Apple platform.
+- The full react-native-macos example app build, linking the binding pod against
+  the React pods, is the local-build lane, as with every native path here.
 
 ## Requires a device (device lane), not exercised here
 
