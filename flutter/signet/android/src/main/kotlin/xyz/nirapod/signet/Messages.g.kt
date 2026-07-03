@@ -258,6 +258,23 @@ enum class HardwareClassWire(val raw: Int) {
   }
 }
 
+/**
+ * The presence check REQUESTED for a key at generation. Three values; `none`
+ * is a silent key. Distinct from [AuthClassWire], the four-value class read
+ * back from the created key and reported in a tier report.
+ */
+enum class AuthRequirementWire(val raw: Int) {
+  NONE(0),
+  BIOMETRIC_ONLY(1),
+  BIOMETRIC_OR_DEVICE_CREDENTIAL(2);
+
+  companion object {
+    fun ofRaw(raw: Int): AuthRequirementWire? {
+      return values().firstOrNull { it.raw == raw }
+    }
+  }
+}
+
 /** The presence check bound to a created key, reported in a tier report. */
 enum class AuthClassWire(val raw: Int) {
   NONE(0),
@@ -309,8 +326,8 @@ enum class SignEncodingWire(val raw: Int) {
 }
 
 /**
- * A key-generation request. Keys created through this surface carry no presence
- * check; the achieved tier is read back from the created key, never assumed.
+ * A key-generation request. The achieved tier and auth class are read back from
+ * the created key, never assumed from the request.
  *
  * Generated class from Pigeon that represents data sent in messages.
  */
@@ -321,6 +338,15 @@ data class KeySpecWire (
   val tierPolicyKind: TierPolicyKindWire,
   /** Set only when [tierPolicyKind] is `atLeast`; null otherwise. */
   val atLeastClass: HardwareClassWire? = null,
+  /** The presence check to bind to the key; `none` creates a silent key. */
+  val authRequirement: AuthRequirementWire,
+  /**
+   * Auth reuse window in seconds; null and 0 both mean per-use. Baked into the
+   * key where the platform supports it (Android); a sign-time value elsewhere.
+   */
+  val authValiditySeconds: Long? = null,
+  /** Whether a biometric re-enrollment invalidates the key. */
+  val invalidateOnBiometricEnrollment: Boolean,
   /** Bound into the key at generation; there is no call-time challenge. */
   val attestationChallenge: ByteArray? = null
 )
@@ -330,8 +356,11 @@ data class KeySpecWire (
       val alias = pigeonVar_list[0] as String
       val tierPolicyKind = pigeonVar_list[1] as TierPolicyKindWire
       val atLeastClass = pigeonVar_list[2] as HardwareClassWire?
-      val attestationChallenge = pigeonVar_list[3] as ByteArray?
-      return KeySpecWire(alias, tierPolicyKind, atLeastClass, attestationChallenge)
+      val authRequirement = pigeonVar_list[3] as AuthRequirementWire
+      val authValiditySeconds = pigeonVar_list[4] as Long?
+      val invalidateOnBiometricEnrollment = pigeonVar_list[5] as Boolean
+      val attestationChallenge = pigeonVar_list[6] as ByteArray?
+      return KeySpecWire(alias, tierPolicyKind, atLeastClass, authRequirement, authValiditySeconds, invalidateOnBiometricEnrollment, attestationChallenge)
     }
   }
   fun toList(): List<Any?> {
@@ -339,6 +368,9 @@ data class KeySpecWire (
       alias,
       tierPolicyKind,
       atLeastClass,
+      authRequirement,
+      authValiditySeconds,
+      invalidateOnBiometricEnrollment,
       attestationChallenge,
     )
   }
@@ -350,7 +382,7 @@ data class KeySpecWire (
       return true
     }
     val other = other as KeySpecWire
-    return MessagesPigeonUtils.deepEquals(this.alias, other.alias) && MessagesPigeonUtils.deepEquals(this.tierPolicyKind, other.tierPolicyKind) && MessagesPigeonUtils.deepEquals(this.atLeastClass, other.atLeastClass) && MessagesPigeonUtils.deepEquals(this.attestationChallenge, other.attestationChallenge)
+    return MessagesPigeonUtils.deepEquals(this.alias, other.alias) && MessagesPigeonUtils.deepEquals(this.tierPolicyKind, other.tierPolicyKind) && MessagesPigeonUtils.deepEquals(this.atLeastClass, other.atLeastClass) && MessagesPigeonUtils.deepEquals(this.authRequirement, other.authRequirement) && MessagesPigeonUtils.deepEquals(this.authValiditySeconds, other.authValiditySeconds) && MessagesPigeonUtils.deepEquals(this.invalidateOnBiometricEnrollment, other.invalidateOnBiometricEnrollment) && MessagesPigeonUtils.deepEquals(this.attestationChallenge, other.attestationChallenge)
   }
 
   override fun hashCode(): Int {
@@ -358,11 +390,14 @@ data class KeySpecWire (
     result = 31 * result + MessagesPigeonUtils.deepHash(this.alias)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.tierPolicyKind)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.atLeastClass)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.authRequirement)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.authValiditySeconds)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.invalidateOnBiometricEnrollment)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.attestationChallenge)
     return result
   }
   override fun toString(): String {
-    return "KeySpecWire(alias=$alias, tierPolicyKind=$tierPolicyKind, atLeastClass=$atLeastClass, attestationChallenge=${attestationChallenge?.contentToString()})"
+    return "KeySpecWire(alias=$alias, tierPolicyKind=$tierPolicyKind, atLeastClass=$atLeastClass, authRequirement=$authRequirement, authValiditySeconds=$authValiditySeconds, invalidateOnBiometricEnrollment=$invalidateOnBiometricEnrollment, attestationChallenge=${attestationChallenge?.contentToString()})"
   }
 }
 
@@ -620,6 +655,64 @@ data class PublicKeyWire (
     return "PublicKeyWire(format=$format, bytes=${bytes.contentToString()})"
   }
 }
+
+/**
+ * The prompt for an auth-gated sign, non-null on [SignetHostApi.sign] only for a
+ * gated key. The native side presents it and authenticates the hardware key
+ * directly; a Dart-shown prompt could not. [authRequirement] must match the
+ * key's and selects the prompt's authenticators.
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class AuthPromptWire (
+  val title: String,
+  val subtitle: String? = null,
+  /** The fallback button label on a biometric-only prompt. */
+  val negativeButtonText: String,
+  /** Selects the prompt's authenticators; matches the key's requirement. */
+  val authRequirement: AuthRequirementWire
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): AuthPromptWire {
+      val title = pigeonVar_list[0] as String
+      val subtitle = pigeonVar_list[1] as String?
+      val negativeButtonText = pigeonVar_list[2] as String
+      val authRequirement = pigeonVar_list[3] as AuthRequirementWire
+      return AuthPromptWire(title, subtitle, negativeButtonText, authRequirement)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      title,
+      subtitle,
+      negativeButtonText,
+      authRequirement,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as AuthPromptWire
+    return MessagesPigeonUtils.deepEquals(this.title, other.title) && MessagesPigeonUtils.deepEquals(this.subtitle, other.subtitle) && MessagesPigeonUtils.deepEquals(this.negativeButtonText, other.negativeButtonText) && MessagesPigeonUtils.deepEquals(this.authRequirement, other.authRequirement)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.title)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.subtitle)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.negativeButtonText)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.authRequirement)
+    return result
+  }
+  override fun toString(): String {
+    return "AuthPromptWire(title=$title, subtitle=$subtitle, negativeButtonText=$negativeButtonText, authRequirement=$authRequirement)"
+  }
+}
 private open class MessagesPigeonCodec : StandardMessageCodec() {
   override fun readValueOfType(type: Byte, buffer: ByteBuffer): Any? {
     return when (type) {
@@ -645,52 +738,62 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
       }
       133.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          AuthClassWire.ofRaw(it.toInt())
+          AuthRequirementWire.ofRaw(it.toInt())
         }
       }
       134.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          PublicKeyFormatWire.ofRaw(it.toInt())
+          AuthClassWire.ofRaw(it.toInt())
         }
       }
       135.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          AttestationFormatWire.ofRaw(it.toInt())
+          PublicKeyFormatWire.ofRaw(it.toInt())
         }
       }
       136.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          SignEncodingWire.ofRaw(it.toInt())
+          AttestationFormatWire.ofRaw(it.toInt())
         }
       }
       137.toByte() -> {
-        return (readValue(buffer) as? List<Any?>)?.let {
-          KeySpecWire.fromList(it)
+        return (readValue(buffer) as Long?)?.let {
+          SignEncodingWire.ofRaw(it.toInt())
         }
       }
       138.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          SecurityTierReportWire.fromList(it)
+          KeySpecWire.fromList(it)
         }
       }
       139.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          SignOptionsWire.fromList(it)
+          SecurityTierReportWire.fromList(it)
         }
       }
       140.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          AttestationResultWire.fromList(it)
+          SignOptionsWire.fromList(it)
         }
       }
       141.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          GenerateResultWire.fromList(it)
+          AttestationResultWire.fromList(it)
         }
       }
       142.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
+          GenerateResultWire.fromList(it)
+        }
+      }
+      143.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
           PublicKeyWire.fromList(it)
+        }
+      }
+      144.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          AuthPromptWire.fromList(it)
         }
       }
       else -> super.readValueOfType(type, buffer)
@@ -714,44 +817,52 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
         stream.write(132)
         writeValue(stream, value.raw.toLong())
       }
-      is AuthClassWire -> {
+      is AuthRequirementWire -> {
         stream.write(133)
         writeValue(stream, value.raw.toLong())
       }
-      is PublicKeyFormatWire -> {
+      is AuthClassWire -> {
         stream.write(134)
         writeValue(stream, value.raw.toLong())
       }
-      is AttestationFormatWire -> {
+      is PublicKeyFormatWire -> {
         stream.write(135)
         writeValue(stream, value.raw.toLong())
       }
-      is SignEncodingWire -> {
+      is AttestationFormatWire -> {
         stream.write(136)
         writeValue(stream, value.raw.toLong())
       }
-      is KeySpecWire -> {
+      is SignEncodingWire -> {
         stream.write(137)
-        writeValue(stream, value.toList())
+        writeValue(stream, value.raw.toLong())
       }
-      is SecurityTierReportWire -> {
+      is KeySpecWire -> {
         stream.write(138)
         writeValue(stream, value.toList())
       }
-      is SignOptionsWire -> {
+      is SecurityTierReportWire -> {
         stream.write(139)
         writeValue(stream, value.toList())
       }
-      is AttestationResultWire -> {
+      is SignOptionsWire -> {
         stream.write(140)
         writeValue(stream, value.toList())
       }
-      is GenerateResultWire -> {
+      is AttestationResultWire -> {
         stream.write(141)
         writeValue(stream, value.toList())
       }
-      is PublicKeyWire -> {
+      is GenerateResultWire -> {
         stream.write(142)
+        writeValue(stream, value.toList())
+      }
+      is PublicKeyWire -> {
+        stream.write(143)
+        writeValue(stream, value.toList())
+      }
+      is AuthPromptWire -> {
+        stream.write(144)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -779,10 +890,14 @@ interface SignetHostApi {
   /** Public key only; the private key has no export path. */
   fun getPublicKey(handleId: String, format: PublicKeyFormatWire): PublicKeyWire
   /**
-   * Signs a 32-byte digest with no authentication prompt. A wrong-length digest
-   * is rejected `invalidArgument` before any key access.
+   * Signs a 32-byte digest. A null [prompt] is the silent path and raises no
+   * prompt; a non-null [prompt] drives an auth-gated sign whose biometric prompt
+   * the native side presents and authenticates directly. A wrong-length digest
+   * is rejected `invalidArgument` before any key access. A second concurrent
+   * gated sign is rejected `authInProgress`; a gated key with no presentable host
+   * UI raises `authContextRequired`.
    */
-  fun sign(handleId: String, digest: ByteArray, options: SignOptionsWire, callback: (Result<ByteArray>) -> Unit)
+  fun sign(handleId: String, digest: ByteArray, options: SignOptionsWire, prompt: AuthPromptWire?, callback: (Result<ByteArray>) -> Unit)
   /** Attestation bound at generation; takes no call-time challenge. */
   fun getAttestation(handleId: String): AttestationResultWire
   /** Re-reads a key's tier; does not throw on an invalidated-but-present key. */
@@ -844,7 +959,8 @@ interface SignetHostApi {
             val handleIdArg = args[0] as String
             val digestArg = args[1] as ByteArray
             val optionsArg = args[2] as SignOptionsWire
-            api.sign(handleIdArg, digestArg, optionsArg) { result: Result<ByteArray> ->
+            val promptArg = args[3] as AuthPromptWire?
+            api.sign(handleIdArg, digestArg, optionsArg, promptArg) { result: Result<ByteArray> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(MessagesPigeonUtils.wrapError(error))

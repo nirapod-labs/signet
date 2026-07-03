@@ -52,19 +52,38 @@ final class SignetHostApiImpl: SignetHostApi {
     handleId: String,
     digest: FlutterStandardTypedData,
     options: SignOptionsWire,
+    prompt: AuthPromptWire?,
     completion: @escaping (Result<FlutterStandardTypedData, Error>) -> Void
   ) {
-    do {
-      let signature = try store.sign(
-        KeyHandle(alias: handleId),
-        digest: digest.data,
-        options: options.toCore()
-      )
-      completion(.success(FlutterStandardTypedData(bytes: signature)))
-    } catch let error as SignetError {
-      completion(.failure(error.asPigeonError))
-    } catch {
-      completion(.failure(SignetError.hardwareError.asPigeonError))
+    let handle = KeyHandle(alias: handleId)
+    guard let prompt else {
+      // Silent path: no prompt, the synchronous core sign.
+      do {
+        let signature = try store.sign(handle, digest: digest.data, options: options.toCore())
+        completion(.success(FlutterStandardTypedData(bytes: signature)))
+      } catch let error as SignetError {
+        completion(.failure(error.asPigeonError))
+      } catch {
+        completion(.failure(SignetError.hardwareError.asPigeonError))
+      }
+      return
+    }
+    // Gated path: the core presents the Enclave prompt off the main thread; await
+    // it and forward the result over the same completion.
+    Task {
+      do {
+        let signature = try await store.sign(
+          handle,
+          digest: digest.data,
+          prompt: prompt.toCore(),
+          options: options.toCore()
+        )
+        completion(.success(FlutterStandardTypedData(bytes: signature)))
+      } catch let error as SignetError {
+        completion(.failure(error.asPigeonError))
+      } catch {
+        completion(.failure(SignetError.hardwareError.asPigeonError))
+      }
     }
   }
 
@@ -140,9 +159,14 @@ private extension KeySpecWire {
     case .bestEffort:
       policy = .bestEffort
     }
+    let accessControl = AccessControlPolicy(
+      authRequirement: authRequirement.toCore(),
+      authValiditySeconds: authValiditySeconds.map { Int($0) },
+      invalidateOnBiometricEnrollment: invalidateOnBiometricEnrollment
+    )
     // The Secure Enclave exposes no per-key attestation, so the wire challenge has
     // no effect on Apple; getAttestation returns format none regardless.
-    return KeySpec(alias: alias, tierPolicy: policy, accessControl: .none)
+    return KeySpec(alias: alias, tierPolicy: policy, accessControl: accessControl)
   }
 }
 
@@ -170,6 +194,27 @@ private extension SignOptionsWire {
     case .der: return SignOptions(encoding: .der)
     case .rawRS: return SignOptions(encoding: .rawRS)
     }
+  }
+}
+
+private extension AuthRequirementWire {
+  func toCore() -> AccessControlPolicy.AuthRequirement {
+    switch self {
+    case .none: return .none
+    case .biometricOnly: return .biometricOnly
+    case .biometricOrDeviceCredential: return .biometricOrDeviceCredential
+    }
+  }
+}
+
+private extension AuthPromptWire {
+  func toCore() -> AuthPrompt {
+    AuthPrompt(
+      title: title,
+      subtitle: subtitle,
+      negativeButtonText: negativeButtonText,
+      authRequirement: authRequirement.toCore()
+    )
   }
 }
 

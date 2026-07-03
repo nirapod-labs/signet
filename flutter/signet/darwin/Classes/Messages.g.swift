@@ -220,6 +220,15 @@ enum HardwareClassWire: Int, CaseIterable {
   case trustedEnvironment = 1
 }
 
+/// The presence check REQUESTED for a key at generation. Three values; `none`
+/// is a silent key. Distinct from [AuthClassWire], the four-value class read
+/// back from the created key and reported in a tier report.
+enum AuthRequirementWire: Int, CaseIterable {
+  case none = 0
+  case biometricOnly = 1
+  case biometricOrDeviceCredential = 2
+}
+
 /// The presence check bound to a created key, reported in a tier report.
 enum AuthClassWire: Int, CaseIterable {
   case none = 0
@@ -246,8 +255,8 @@ enum SignEncodingWire: Int, CaseIterable {
   case rawRS = 1
 }
 
-/// A key-generation request. Keys created through this surface carry no presence
-/// check; the achieved tier is read back from the created key, never assumed.
+/// A key-generation request. The achieved tier and auth class are read back from
+/// the created key, never assumed from the request.
 ///
 /// Generated class from Pigeon that represents data sent in messages.
 struct KeySpecWire: Hashable, CustomStringConvertible {
@@ -257,6 +266,13 @@ struct KeySpecWire: Hashable, CustomStringConvertible {
   var tierPolicyKind: TierPolicyKindWire
   /// Set only when [tierPolicyKind] is `atLeast`; null otherwise.
   var atLeastClass: HardwareClassWire? = nil
+  /// The presence check to bind to the key; `none` creates a silent key.
+  var authRequirement: AuthRequirementWire
+  /// Auth reuse window in seconds; null and 0 both mean per-use. Baked into the
+  /// key where the platform supports it (Android); a sign-time value elsewhere.
+  var authValiditySeconds: Int64? = nil
+  /// Whether a biometric re-enrollment invalidates the key.
+  var invalidateOnBiometricEnrollment: Bool
   /// Bound into the key at generation; there is no call-time challenge.
   var attestationChallenge: FlutterStandardTypedData? = nil
 
@@ -266,12 +282,18 @@ struct KeySpecWire: Hashable, CustomStringConvertible {
     let alias = pigeonVar_list[0] as! String
     let tierPolicyKind = pigeonVar_list[1] as! TierPolicyKindWire
     let atLeastClass: HardwareClassWire? = nilOrValue(pigeonVar_list[2])
-    let attestationChallenge: FlutterStandardTypedData? = nilOrValue(pigeonVar_list[3])
+    let authRequirement = pigeonVar_list[3] as! AuthRequirementWire
+    let authValiditySeconds: Int64? = nilOrValue(pigeonVar_list[4])
+    let invalidateOnBiometricEnrollment = pigeonVar_list[5] as! Bool
+    let attestationChallenge: FlutterStandardTypedData? = nilOrValue(pigeonVar_list[6])
 
     return KeySpecWire(
       alias: alias,
       tierPolicyKind: tierPolicyKind,
       atLeastClass: atLeastClass,
+      authRequirement: authRequirement,
+      authValiditySeconds: authValiditySeconds,
+      invalidateOnBiometricEnrollment: invalidateOnBiometricEnrollment,
       attestationChallenge: attestationChallenge
     )
   }
@@ -280,6 +302,9 @@ struct KeySpecWire: Hashable, CustomStringConvertible {
       alias,
       tierPolicyKind,
       atLeastClass,
+      authRequirement,
+      authValiditySeconds,
+      invalidateOnBiometricEnrollment,
       attestationChallenge,
     ]
   }
@@ -287,7 +312,7 @@ struct KeySpecWire: Hashable, CustomStringConvertible {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return MessagesPigeonInternal.deepEquals(lhs.alias, rhs.alias) && MessagesPigeonInternal.deepEquals(lhs.tierPolicyKind, rhs.tierPolicyKind) && MessagesPigeonInternal.deepEquals(lhs.atLeastClass, rhs.atLeastClass) && MessagesPigeonInternal.deepEquals(lhs.attestationChallenge, rhs.attestationChallenge)
+    return MessagesPigeonInternal.deepEquals(lhs.alias, rhs.alias) && MessagesPigeonInternal.deepEquals(lhs.tierPolicyKind, rhs.tierPolicyKind) && MessagesPigeonInternal.deepEquals(lhs.atLeastClass, rhs.atLeastClass) && MessagesPigeonInternal.deepEquals(lhs.authRequirement, rhs.authRequirement) && MessagesPigeonInternal.deepEquals(lhs.authValiditySeconds, rhs.authValiditySeconds) && MessagesPigeonInternal.deepEquals(lhs.invalidateOnBiometricEnrollment, rhs.invalidateOnBiometricEnrollment) && MessagesPigeonInternal.deepEquals(lhs.attestationChallenge, rhs.attestationChallenge)
   }
 
   func hash(into hasher: inout Hasher) {
@@ -295,11 +320,14 @@ struct KeySpecWire: Hashable, CustomStringConvertible {
     MessagesPigeonInternal.deepHash(value: alias, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: tierPolicyKind, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: atLeastClass, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: authRequirement, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: authValiditySeconds, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: invalidateOnBiometricEnrollment, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: attestationChallenge, hasher: &hasher)
   }
 
   public var description: String {
-    return "KeySpecWire(alias: \(String(describing: alias)), tierPolicyKind: \(String(describing: tierPolicyKind)), atLeastClass: \(String(describing: atLeastClass)), attestationChallenge: \(String(describing: attestationChallenge)))"
+    return "KeySpecWire(alias: \(String(describing: alias)), tierPolicyKind: \(String(describing: tierPolicyKind)), atLeastClass: \(String(describing: atLeastClass)), authRequirement: \(String(describing: authRequirement)), authValiditySeconds: \(String(describing: authValiditySeconds)), invalidateOnBiometricEnrollment: \(String(describing: invalidateOnBiometricEnrollment)), attestationChallenge: \(String(describing: attestationChallenge)))"
   }
 }
 
@@ -549,6 +577,63 @@ struct PublicKeyWire: Hashable, CustomStringConvertible {
   }
 }
 
+/// The prompt for an auth-gated sign, non-null on [SignetHostApi.sign] only for a
+/// gated key. The native side presents it and authenticates the hardware key
+/// directly; a Dart-shown prompt could not. [authRequirement] must match the
+/// key's and selects the prompt's authenticators.
+///
+/// Generated class from Pigeon that represents data sent in messages.
+struct AuthPromptWire: Hashable, CustomStringConvertible {
+  var title: String
+  var subtitle: String? = nil
+  /// The fallback button label on a biometric-only prompt.
+  var negativeButtonText: String
+  /// Selects the prompt's authenticators; matches the key's requirement.
+  var authRequirement: AuthRequirementWire
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> AuthPromptWire? {
+    let title = pigeonVar_list[0] as! String
+    let subtitle: String? = nilOrValue(pigeonVar_list[1])
+    let negativeButtonText = pigeonVar_list[2] as! String
+    let authRequirement = pigeonVar_list[3] as! AuthRequirementWire
+
+    return AuthPromptWire(
+      title: title,
+      subtitle: subtitle,
+      negativeButtonText: negativeButtonText,
+      authRequirement: authRequirement
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      title,
+      subtitle,
+      negativeButtonText,
+      authRequirement,
+    ]
+  }
+  static func == (lhs: AuthPromptWire, rhs: AuthPromptWire) -> Bool {
+    if Swift.type(of: lhs) != Swift.type(of: rhs) {
+      return false
+    }
+    return MessagesPigeonInternal.deepEquals(lhs.title, rhs.title) && MessagesPigeonInternal.deepEquals(lhs.subtitle, rhs.subtitle) && MessagesPigeonInternal.deepEquals(lhs.negativeButtonText, rhs.negativeButtonText) && MessagesPigeonInternal.deepEquals(lhs.authRequirement, rhs.authRequirement)
+  }
+
+  func hash(into hasher: inout Hasher) {
+    hasher.combine("AuthPromptWire")
+    MessagesPigeonInternal.deepHash(value: title, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: subtitle, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: negativeButtonText, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: authRequirement, hasher: &hasher)
+  }
+
+  public var description: String {
+    return "AuthPromptWire(title: \(String(describing: title)), subtitle: \(String(describing: subtitle)), negativeButtonText: \(String(describing: negativeButtonText)), authRequirement: \(String(describing: authRequirement)))"
+  }
+}
+
 private class MessagesPigeonCodecReader: FlutterStandardReader {
   override func readValue(ofType type: UInt8) -> Any? {
     switch type {
@@ -579,39 +664,47 @@ private class MessagesPigeonCodecReader: FlutterStandardReader {
     case 133:
       let enumResultAsInt: Int? = nilOrValue(self.readValue() as! Int?)
       if let enumResultAsInt = enumResultAsInt {
-        return AuthClassWire(rawValue: enumResultAsInt)
+        return AuthRequirementWire(rawValue: enumResultAsInt)
       }
       return nil
     case 134:
       let enumResultAsInt: Int? = nilOrValue(self.readValue() as! Int?)
       if let enumResultAsInt = enumResultAsInt {
-        return PublicKeyFormatWire(rawValue: enumResultAsInt)
+        return AuthClassWire(rawValue: enumResultAsInt)
       }
       return nil
     case 135:
       let enumResultAsInt: Int? = nilOrValue(self.readValue() as! Int?)
       if let enumResultAsInt = enumResultAsInt {
-        return AttestationFormatWire(rawValue: enumResultAsInt)
+        return PublicKeyFormatWire(rawValue: enumResultAsInt)
       }
       return nil
     case 136:
       let enumResultAsInt: Int? = nilOrValue(self.readValue() as! Int?)
       if let enumResultAsInt = enumResultAsInt {
-        return SignEncodingWire(rawValue: enumResultAsInt)
+        return AttestationFormatWire(rawValue: enumResultAsInt)
       }
       return nil
     case 137:
-      return KeySpecWire.fromList(self.readValue() as! [Any?])
+      let enumResultAsInt: Int? = nilOrValue(self.readValue() as! Int?)
+      if let enumResultAsInt = enumResultAsInt {
+        return SignEncodingWire(rawValue: enumResultAsInt)
+      }
+      return nil
     case 138:
-      return SecurityTierReportWire.fromList(self.readValue() as! [Any?])
+      return KeySpecWire.fromList(self.readValue() as! [Any?])
     case 139:
-      return SignOptionsWire.fromList(self.readValue() as! [Any?])
+      return SecurityTierReportWire.fromList(self.readValue() as! [Any?])
     case 140:
-      return AttestationResultWire.fromList(self.readValue() as! [Any?])
+      return SignOptionsWire.fromList(self.readValue() as! [Any?])
     case 141:
-      return GenerateResultWire.fromList(self.readValue() as! [Any?])
+      return AttestationResultWire.fromList(self.readValue() as! [Any?])
     case 142:
+      return GenerateResultWire.fromList(self.readValue() as! [Any?])
+    case 143:
       return PublicKeyWire.fromList(self.readValue() as! [Any?])
+    case 144:
+      return AuthPromptWire.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
     }
@@ -632,35 +725,41 @@ private class MessagesPigeonCodecWriter: FlutterStandardWriter {
     } else if let value = value as? HardwareClassWire {
       super.writeByte(132)
       super.writeValue(value.rawValue)
-    } else if let value = value as? AuthClassWire {
+    } else if let value = value as? AuthRequirementWire {
       super.writeByte(133)
       super.writeValue(value.rawValue)
-    } else if let value = value as? PublicKeyFormatWire {
+    } else if let value = value as? AuthClassWire {
       super.writeByte(134)
       super.writeValue(value.rawValue)
-    } else if let value = value as? AttestationFormatWire {
+    } else if let value = value as? PublicKeyFormatWire {
       super.writeByte(135)
       super.writeValue(value.rawValue)
-    } else if let value = value as? SignEncodingWire {
+    } else if let value = value as? AttestationFormatWire {
       super.writeByte(136)
       super.writeValue(value.rawValue)
-    } else if let value = value as? KeySpecWire {
+    } else if let value = value as? SignEncodingWire {
       super.writeByte(137)
-      super.writeValue(value.toList())
-    } else if let value = value as? SecurityTierReportWire {
+      super.writeValue(value.rawValue)
+    } else if let value = value as? KeySpecWire {
       super.writeByte(138)
       super.writeValue(value.toList())
-    } else if let value = value as? SignOptionsWire {
+    } else if let value = value as? SecurityTierReportWire {
       super.writeByte(139)
       super.writeValue(value.toList())
-    } else if let value = value as? AttestationResultWire {
+    } else if let value = value as? SignOptionsWire {
       super.writeByte(140)
       super.writeValue(value.toList())
-    } else if let value = value as? GenerateResultWire {
+    } else if let value = value as? AttestationResultWire {
       super.writeByte(141)
       super.writeValue(value.toList())
-    } else if let value = value as? PublicKeyWire {
+    } else if let value = value as? GenerateResultWire {
       super.writeByte(142)
+      super.writeValue(value.toList())
+    } else if let value = value as? PublicKeyWire {
+      super.writeByte(143)
+      super.writeValue(value.toList())
+    } else if let value = value as? AuthPromptWire {
+      super.writeByte(144)
       super.writeValue(value.toList())
     } else {
       super.writeValue(value)
@@ -697,9 +796,13 @@ protocol SignetHostApi {
   func generateKey(spec: KeySpecWire) throws -> GenerateResultWire
   /// Public key only; the private key has no export path.
   func getPublicKey(handleId: String, format: PublicKeyFormatWire) throws -> PublicKeyWire
-  /// Signs a 32-byte digest with no authentication prompt. A wrong-length digest
-  /// is rejected `invalidArgument` before any key access.
-  func sign(handleId: String, digest: FlutterStandardTypedData, options: SignOptionsWire, completion: @escaping (Result<FlutterStandardTypedData, Error>) -> Void)
+  /// Signs a 32-byte digest. A null [prompt] is the silent path and raises no
+  /// prompt; a non-null [prompt] drives an auth-gated sign whose biometric prompt
+  /// the native side presents and authenticates directly. A wrong-length digest
+  /// is rejected `invalidArgument` before any key access. A second concurrent
+  /// gated sign is rejected `authInProgress`; a gated key with no presentable host
+  /// UI raises `authContextRequired`.
+  func sign(handleId: String, digest: FlutterStandardTypedData, options: SignOptionsWire, prompt: AuthPromptWire?, completion: @escaping (Result<FlutterStandardTypedData, Error>) -> Void)
   /// Attestation bound at generation; takes no call-time challenge.
   func getAttestation(handleId: String) throws -> AttestationResultWire
   /// Re-reads a key's tier; does not throw on an invalidated-but-present key.
@@ -750,8 +853,12 @@ class SignetHostApiSetup {
     } else {
       getPublicKeyChannel.setMessageHandler(nil)
     }
-    /// Signs a 32-byte digest with no authentication prompt. A wrong-length digest
-    /// is rejected `invalidArgument` before any key access.
+    /// Signs a 32-byte digest. A null [prompt] is the silent path and raises no
+    /// prompt; a non-null [prompt] drives an auth-gated sign whose biometric prompt
+    /// the native side presents and authenticates directly. A wrong-length digest
+    /// is rejected `invalidArgument` before any key access. A second concurrent
+    /// gated sign is rejected `authInProgress`; a gated key with no presentable host
+    /// UI raises `authContextRequired`.
     let signChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.signet.SignetHostApi.sign\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       signChannel.setMessageHandler { message, reply in
@@ -759,7 +866,8 @@ class SignetHostApiSetup {
         let handleIdArg = args[0] as! String
         let digestArg = args[1] as! FlutterStandardTypedData
         let optionsArg = args[2] as! SignOptionsWire
-        api.sign(handleId: handleIdArg, digest: digestArg, options: optionsArg) { result in
+        let promptArg: AuthPromptWire? = nilOrValue(args[3])
+        api.sign(handleId: handleIdArg, digest: digestArg, options: optionsArg, prompt: promptArg) { result in
           switch result {
           case .success(let res):
             reply(wrapResult(res))
