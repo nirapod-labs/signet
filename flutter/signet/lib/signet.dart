@@ -32,6 +32,11 @@ enum TierEvidence {
   selfReportUnverified,
 }
 
+/// The presence check requested for a key at generation. Three values; [none]
+/// creates a silent key. Distinct from [AuthClass], the four-value class read
+/// back from the created key.
+enum AuthRequirement { none, biometricOnly, biometricOrDeviceCredential }
+
 /// The presence check bound to a key at creation, derived from the created key
 /// and never echoed from the request.
 enum AuthClass {
@@ -113,6 +118,26 @@ class SignOptions {
   final SignEncoding encoding;
 }
 
+/// The prompt for an auth-gated [Signet.sign]. Supplied only for a gated key; the
+/// native side presents it and authenticates the hardware key directly. The
+/// [authRequirement] must match the key's and selects the prompt's authenticators.
+class AuthPrompt {
+  const AuthPrompt({
+    required this.title,
+    this.subtitle,
+    this.negativeButtonText = 'Cancel',
+    required this.authRequirement,
+  });
+
+  final String title;
+  final String? subtitle;
+
+  /// The fallback button label on a biometric-only prompt.
+  final String negativeButtonText;
+
+  final AuthRequirement authRequirement;
+}
+
 /// The attestation for a key: a certificate chain ([AttestationFormat.androidKeyChain]),
 /// one DER-encoded certificate per element, or [AttestationFormat.none] with a null
 /// chain. Produced, never verified, by this library.
@@ -179,10 +204,11 @@ class SignetException implements Exception {
 
 /// Hardware-backed P-256 signing keys.
 ///
-/// The surface here is the non-interactive one: keys are created with no presence
-/// check and signing raises no prompt. Every call marshals to the native core and
-/// rebuilds the typed result; a core error arrives as a [SignetException] over the
-/// closed [SignetErrorCode] set.
+/// Keys are silent by default or carry a presence check via [AuthRequirement]; a
+/// gated key is signed by passing an [AuthPrompt], which the native side presents
+/// and authenticates directly. Every call marshals to the native core and rebuilds
+/// the typed result; a core error arrives as a [SignetException] over the closed
+/// [SignetErrorCode] set.
 class Signet {
   /// Binds to the platform channel over the native core.
   Signet() : _host = SignetHostApi();
@@ -196,13 +222,20 @@ class Signet {
   /// Generates a non-exportable P-256 key at [alias]. [tierPolicy] selects by
   /// class (default [Strongest]); a hard policy below its floor fails
   /// [SignetErrorCode.unavailableTier], while [BestEffort] never fails on tier and
-  /// its report carries `meetsFloor == false`. An existing alias fails
+  /// its report carries `meetsFloor == false`. [authRequirement] binds a presence
+  /// check to the key (default [AuthRequirement.none], a silent key); a gated key
+  /// needs an [AuthPrompt] at [sign]. [authValiditySeconds] sets an auth reuse
+  /// window (null and 0 mean per-use); [invalidateOnBiometricEnrollment] makes a
+  /// later biometric enrollment invalidate the key. An existing alias fails
   /// [SignetErrorCode.keyAlreadyExists] with no silent overwrite. An
   /// [attestationChallenge] is bound into the key here; [getAttestation] takes
   /// none. Returns the handle and its report together.
   Future<(KeyHandle, SecurityTierReport)> generateKey({
     required String alias,
     TierPolicy tierPolicy = const Strongest(),
+    AuthRequirement authRequirement = AuthRequirement.none,
+    int? authValiditySeconds,
+    bool invalidateOnBiometricEnrollment = true,
     Uint8List? attestationChallenge,
   }) async {
     final result = await _guard(
@@ -212,6 +245,9 @@ class Signet {
           tierPolicyKind: _tierKindTo(tierPolicy),
           atLeastClass:
               tierPolicy is AtLeast ? _hardwareClassTo(tierPolicy.floor) : null,
+          authRequirement: _authRequirementTo(authRequirement),
+          authValiditySeconds: authValiditySeconds,
+          invalidateOnBiometricEnrollment: invalidateOnBiometricEnrollment,
           attestationChallenge: attestationChallenge,
         ),
       ),
@@ -229,19 +265,27 @@ class Signet {
     return PublicKey(format: _pubFormatFrom(result.format), bytes: result.bytes);
   }
 
-  /// Signs a 32-byte digest (`NONEwithECDSA` / `ecdsaSignatureDigestX962SHA256`)
-  /// with no authentication prompt. A wrong-length digest fails
-  /// [SignetErrorCode.invalidArgument] before any key access.
+  /// Signs a 32-byte digest (`NONEwithECDSA` / `ecdsaSignatureDigestX962SHA256`).
+  /// With no [prompt] this is the silent path and raises no prompt. Pass a
+  /// [prompt] for a gated key: the native side presents the biometric prompt
+  /// itself and authenticates the hardware key directly, with no Dart round-trip.
+  /// A wrong-length digest fails [SignetErrorCode.invalidArgument] before any key
+  /// access. A second concurrent gated sign fails
+  /// [SignetErrorCode.authInProgress]; a gated key with no presentable host UI
+  /// fails [SignetErrorCode.authContextRequired], never
+  /// [SignetErrorCode.hardwareError].
   Future<Uint8List> sign(
     KeyHandle handle,
     Uint8List digest, {
     SignOptions options = const SignOptions(),
+    AuthPrompt? prompt,
   }) {
     return _guard(
       () => _host.sign(
         handle.id,
         digest,
         SignOptionsWire(encoding: _encodingTo(options.encoding)),
+        prompt == null ? null : _authPromptTo(prompt),
       ),
     );
   }
@@ -360,6 +404,20 @@ SignEncodingWire _encodingTo(SignEncoding value) => switch (value) {
       SignEncoding.der => SignEncodingWire.der,
       SignEncoding.rawRS => SignEncodingWire.rawRS,
     };
+
+AuthRequirementWire _authRequirementTo(AuthRequirement value) => switch (value) {
+      AuthRequirement.none => AuthRequirementWire.none,
+      AuthRequirement.biometricOnly => AuthRequirementWire.biometricOnly,
+      AuthRequirement.biometricOrDeviceCredential =>
+        AuthRequirementWire.biometricOrDeviceCredential,
+    };
+
+AuthPromptWire _authPromptTo(AuthPrompt value) => AuthPromptWire(
+      title: value.title,
+      subtitle: value.subtitle,
+      negativeButtonText: value.negativeButtonText,
+      authRequirement: _authRequirementTo(value.authRequirement),
+    );
 
 PublicKeyFormatWire _pubFormatTo(PublicKeyFormat value) => switch (value) {
       PublicKeyFormat.rawX962 => PublicKeyFormatWire.rawX962,

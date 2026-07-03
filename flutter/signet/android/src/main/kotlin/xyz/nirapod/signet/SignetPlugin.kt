@@ -3,36 +3,84 @@
 
 package xyz.nirapod.signet
 
+import androidx.fragment.app.FragmentActivity
 import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 /**
  * Flutter plugin entry point for the Signet Android binding.
  *
  * Registers the generated [SignetHostApi] and forwards every call to
  * [AndroidKeyStoreSigner] in the `android/` core. This class holds no policy and
- * no key material; the core is the only code that touches the Keystore.
+ * no key material; the core is the only code that touches the Keystore. It is
+ * [ActivityAware] so an auth-gated sign can host its biometric prompt on the
+ * running activity.
  */
-public class SignetPlugin : FlutterPlugin {
+public class SignetPlugin : FlutterPlugin, ActivityAware {
+    private var activity: FragmentActivity? = null
+    private var impl: SignetHostApiImpl? = null
+
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         val signer = AndroidKeyStoreSigner(binding.applicationContext)
-        SignetHostApi.setUp(binding.binaryMessenger, SignetHostApiImpl(signer))
+        val hostApi = SignetHostApiImpl(signer) { activity }
+        impl = hostApi
+        SignetHostApi.setUp(binding.binaryMessenger, hostApi)
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         SignetHostApi.setUp(binding.binaryMessenger, null)
+        impl?.dispose()
+        impl = null
+    }
+
+    // A biometric prompt needs a FragmentActivity to host it; the host app uses
+    // FlutterFragmentActivity. A plain activity leaves this null, and a gated sign
+    // then fails authContextRequired rather than crashing.
+    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+        activity = binding.activity as? FragmentActivity
+    }
+
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+        activity = binding.activity as? FragmentActivity
+    }
+
+    override fun onDetachedFromActivityForConfigChanges() {
+        activity = null
+    }
+
+    override fun onDetachedFromActivity() {
+        activity = null
     }
 }
 
 /**
- * Bridges the generated host API to the core. Each call wraps the core in [coded],
- * which turns a [SignetException] into a Pigeon [FlutterError] carrying the
- * closed-set code. Wire structs map one-to-one to the core's canonical types; no
- * policy decision is made in this layer. Wire enums are the Pigeon-generated
- * UPPER_SNAKE constants; the core enums are camelCase.
+ * Bridges the generated host API to the core. Each non-signing call wraps the core
+ * in [coded], which turns a [SignetException] into a Pigeon [FlutterError] carrying
+ * the closed-set code. Signing keeps its own fail-closed mapping. Wire structs map
+ * one-to-one to the core's canonical types; no policy decision is made in this
+ * layer. Wire enums are the Pigeon-generated UPPER_SNAKE constants; the core enums
+ * are camelCase.
  */
 internal class SignetHostApiImpl(
     private val signer: AndroidKeyStoreSigner,
+    private val activityProvider: () -> FragmentActivity?,
 ) : SignetHostApi {
+    // Gated signing suspends on a main-thread biometric prompt; the core hops to
+    // the main thread itself; this scope only needs to outlive the call.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    /** Cancels any in-flight gated sign when the engine detaches. */
+    fun dispose() {
+        scope.cancel()
+    }
+
     override fun generateKey(spec: KeySpecWire): GenerateResultWire = coded {
         val (handle, report) = signer.generateKey(spec.toKeySpec())
         GenerateResultWire(handleId = handle.alias, report = report.toWire())
@@ -47,19 +95,38 @@ internal class SignetHostApiImpl(
         handleId: String,
         digest: ByteArray,
         options: SignOptionsWire,
+        prompt: AuthPromptWire?,
         callback: (Result<ByteArray>) -> Unit,
     ) {
-        val outcome = try {
-            Result.success(signer.sign(KeyHandle(handleId), digest, options.toCore()))
-        } catch (failure: SignetException) {
-            Result.failure(failure.toFlutterError())
-        } catch (failure: Exception) {
-            // Defensive floor: an unclassified failure fails closed to hardwareError.
-            Result.failure(
-                SignetException(SignetErrorCode.hardwareError, cause = failure).toFlutterError(),
-            )
+        if (prompt == null) {
+            // Silent path: no prompt, the synchronous core sign.
+            val outcome = try {
+                Result.success(signer.sign(KeyHandle(handleId), digest, options.toCore()))
+            } catch (failure: Exception) {
+                signFailure(failure)
+            }
+            callback(outcome)
+            return
         }
-        callback(outcome)
+        // Gated path: a biometric prompt needs a FragmentActivity to host it.
+        val activity = activityProvider()
+        if (activity == null) {
+            callback(
+                Result.failure(SignetException(SignetErrorCode.authContextRequired).toFlutterError()),
+            )
+            return
+        }
+        val authContext = prompt.toAuthContext(activity)
+        scope.launch {
+            val outcome = try {
+                Result.success(signer.sign(KeyHandle(handleId), digest, authContext, options.toCore()))
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (failure: Exception) {
+                signFailure(failure)
+            }
+            callback(outcome)
+        }
     }
 
     override fun getAttestation(handleId: String): AttestationResultWire = coded {
@@ -73,6 +140,17 @@ internal class SignetHostApiImpl(
     override fun exists(alias: String): Boolean = coded { signer.exists(alias) }
 
     override fun deleteKey(alias: String): Unit = coded { signer.delete(alias) }
+
+    /**
+     * Maps a signing failure to a closed-set [FlutterError]. A [SignetException]
+     * carries its own code; anything else fails closed to `hardwareError`.
+     */
+    private fun signFailure(failure: Throwable): Result<ByteArray> = when (failure) {
+        is SignetException -> Result.failure(failure.toFlutterError())
+        else -> Result.failure(
+            SignetException(SignetErrorCode.hardwareError, cause = failure).toFlutterError(),
+        )
+    }
 }
 
 /** Maps a [SignetException] to the Pigeon error carrying its closed-set code. */
@@ -92,7 +170,11 @@ private inline fun <T> coded(block: () -> T): T =
 private fun KeySpecWire.toKeySpec(): KeySpec = KeySpec(
     alias = alias,
     tierPolicy = coreTierPolicy(tierPolicyKind, atLeastClass),
-    accessControl = AccessControlPolicy.None,
+    accessControl = AccessControlPolicy(
+        authRequirement = authRequirement.toCore(),
+        authValiditySeconds = authValiditySeconds?.toInt(),
+        invalidateOnBiometricEnrollment = invalidateOnBiometricEnrollment,
+    ),
     attestationChallenge = attestationChallenge,
 )
 
@@ -106,6 +188,20 @@ private fun coreTierPolicy(
     )
     TierPolicyKindWire.BEST_EFFORT -> TierPolicy.BestEffort
 }
+
+private fun AuthRequirementWire.toCore(): AuthRequirement = when (this) {
+    AuthRequirementWire.NONE -> AuthRequirement.none
+    AuthRequirementWire.BIOMETRIC_ONLY -> AuthRequirement.biometricOnly
+    AuthRequirementWire.BIOMETRIC_OR_DEVICE_CREDENTIAL -> AuthRequirement.biometricOrDeviceCredential
+}
+
+private fun AuthPromptWire.toAuthContext(activity: FragmentActivity): AuthContext = AuthContext(
+    activity = activity,
+    title = title,
+    authRequirement = authRequirement.toCore(),
+    subtitle = subtitle,
+    negativeButtonText = negativeButtonText,
+)
 
 private fun HardwareClassWire.toCore(): HardwareClass = when (this) {
     HardwareClassWire.DISCRETE_SECURE -> HardwareClass.discreteSecure

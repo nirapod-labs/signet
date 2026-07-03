@@ -1,8 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Nirapod Labs
 
-// Signet conformance runner (Dart), scaffold stub.
-// Answers every behavior with "unimplemented", one answer per request.
+// Signet conformance runner (Dart).
+//
+// A stub that answers every behavior "unimplemented", one answer per request
+// (no silent skip). The Dart binding is a thin channel over the native cores and
+// imports Flutter, so it cannot run as a standalone `dart` process against real
+// hardware: its behavioral conformance runs on a device through
+// flutter/SignetApp's integration_test, and its cryptographic outputs are
+// inherited from the apple/ and android/ cores the conformance suite already
+// exercises. See flutter/VERIFICATION.md.
 
 import 'dart:convert';
 import 'dart:io';

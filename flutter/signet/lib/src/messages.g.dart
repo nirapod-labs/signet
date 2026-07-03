@@ -133,6 +133,15 @@ enum HardwareClassWire {
   trustedEnvironment,
 }
 
+/// The presence check REQUESTED for a key at generation. Three values; `none`
+/// is a silent key. Distinct from [AuthClassWire], the four-value class read
+/// back from the created key and reported in a tier report.
+enum AuthRequirementWire {
+  none,
+  biometricOnly,
+  biometricOrDeviceCredential,
+}
+
 /// The presence check bound to a created key, reported in a tier report.
 enum AuthClassWire {
   none,
@@ -159,13 +168,16 @@ enum SignEncodingWire {
   rawRS,
 }
 
-/// A key-generation request. Keys created through this surface carry no presence
-/// check; the achieved tier is read back from the created key, never assumed.
+/// A key-generation request. The achieved tier and auth class are read back from
+/// the created key, never assumed from the request.
 class KeySpecWire {
   KeySpecWire({
     required this.alias,
     required this.tierPolicyKind,
     this.atLeastClass,
+    required this.authRequirement,
+    this.authValiditySeconds,
+    required this.invalidateOnBiometricEnrollment,
     this.attestationChallenge,
   });
 
@@ -178,6 +190,16 @@ class KeySpecWire {
   /// Set only when [tierPolicyKind] is `atLeast`; null otherwise.
   HardwareClassWire? atLeastClass;
 
+  /// The presence check to bind to the key; `none` creates a silent key.
+  AuthRequirementWire authRequirement;
+
+  /// Auth reuse window in seconds; null and 0 both mean per-use. Baked into the
+  /// key where the platform supports it (Android); a sign-time value elsewhere.
+  int? authValiditySeconds;
+
+  /// Whether a biometric re-enrollment invalidates the key.
+  bool invalidateOnBiometricEnrollment;
+
   /// Bound into the key at generation; there is no call-time challenge.
   Uint8List? attestationChallenge;
 
@@ -186,6 +208,9 @@ class KeySpecWire {
       alias,
       tierPolicyKind,
       atLeastClass,
+      authRequirement,
+      authValiditySeconds,
+      invalidateOnBiometricEnrollment,
       attestationChallenge,
     ];
   }
@@ -199,7 +224,10 @@ class KeySpecWire {
       alias: result[0]! as String,
       tierPolicyKind: result[1]! as TierPolicyKindWire,
       atLeastClass: result[2] as HardwareClassWire?,
-      attestationChallenge: result[3] as Uint8List?,
+      authRequirement: result[3]! as AuthRequirementWire,
+      authValiditySeconds: result[4] as int?,
+      invalidateOnBiometricEnrollment: result[5]! as bool,
+      attestationChallenge: result[6] as Uint8List?,
     );
   }
 
@@ -212,7 +240,7 @@ class KeySpecWire {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(alias, other.alias) && _deepEquals(tierPolicyKind, other.tierPolicyKind) && _deepEquals(atLeastClass, other.atLeastClass) && _deepEquals(attestationChallenge, other.attestationChallenge);
+    return _deepEquals(alias, other.alias) && _deepEquals(tierPolicyKind, other.tierPolicyKind) && _deepEquals(atLeastClass, other.atLeastClass) && _deepEquals(authRequirement, other.authRequirement) && _deepEquals(authValiditySeconds, other.authValiditySeconds) && _deepEquals(invalidateOnBiometricEnrollment, other.invalidateOnBiometricEnrollment) && _deepEquals(attestationChallenge, other.attestationChallenge);
   }
 
   @override
@@ -221,7 +249,7 @@ class KeySpecWire {
 
   @override
   String toString() {
-    return 'KeySpecWire(alias: $alias, tierPolicyKind: $tierPolicyKind, atLeastClass: $atLeastClass, attestationChallenge: $attestationChallenge)';
+    return 'KeySpecWire(alias: $alias, tierPolicyKind: $tierPolicyKind, atLeastClass: $atLeastClass, authRequirement: $authRequirement, authValiditySeconds: $authValiditySeconds, invalidateOnBiometricEnrollment: $invalidateOnBiometricEnrollment, attestationChallenge: $attestationChallenge)';
   }
 }
 
@@ -516,6 +544,72 @@ class PublicKeyWire {
   }
 }
 
+/// The prompt for an auth-gated sign, non-null on [SignetHostApi.sign] only for a
+/// gated key. The native side presents it and authenticates the hardware key
+/// directly; a Dart-shown prompt could not. [authRequirement] must match the
+/// key's and selects the prompt's authenticators.
+class AuthPromptWire {
+  AuthPromptWire({
+    required this.title,
+    this.subtitle,
+    required this.negativeButtonText,
+    required this.authRequirement,
+  });
+
+  String title;
+
+  String? subtitle;
+
+  /// The fallback button label on a biometric-only prompt.
+  String negativeButtonText;
+
+  /// Selects the prompt's authenticators; matches the key's requirement.
+  AuthRequirementWire authRequirement;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      title,
+      subtitle,
+      negativeButtonText,
+      authRequirement,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static AuthPromptWire decode(Object result) {
+    result as List<Object?>;
+    return AuthPromptWire(
+      title: result[0]! as String,
+      subtitle: result[1] as String?,
+      negativeButtonText: result[2]! as String,
+      authRequirement: result[3]! as AuthRequirementWire,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! AuthPromptWire || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(title, other.title) && _deepEquals(subtitle, other.subtitle) && _deepEquals(negativeButtonText, other.negativeButtonText) && _deepEquals(authRequirement, other.authRequirement);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'AuthPromptWire(title: $title, subtitle: $subtitle, negativeButtonText: $negativeButtonText, authRequirement: $authRequirement)';
+  }
+}
+
 
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
@@ -536,35 +630,41 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is HardwareClassWire) {
       buffer.putUint8(132);
       writeValue(buffer, value.index);
-    }    else if (value is AuthClassWire) {
+    }    else if (value is AuthRequirementWire) {
       buffer.putUint8(133);
       writeValue(buffer, value.index);
-    }    else if (value is PublicKeyFormatWire) {
+    }    else if (value is AuthClassWire) {
       buffer.putUint8(134);
       writeValue(buffer, value.index);
-    }    else if (value is AttestationFormatWire) {
+    }    else if (value is PublicKeyFormatWire) {
       buffer.putUint8(135);
       writeValue(buffer, value.index);
-    }    else if (value is SignEncodingWire) {
+    }    else if (value is AttestationFormatWire) {
       buffer.putUint8(136);
       writeValue(buffer, value.index);
-    }    else if (value is KeySpecWire) {
+    }    else if (value is SignEncodingWire) {
       buffer.putUint8(137);
-      writeValue(buffer, value.encode());
-    }    else if (value is SecurityTierReportWire) {
+      writeValue(buffer, value.index);
+    }    else if (value is KeySpecWire) {
       buffer.putUint8(138);
       writeValue(buffer, value.encode());
-    }    else if (value is SignOptionsWire) {
+    }    else if (value is SecurityTierReportWire) {
       buffer.putUint8(139);
       writeValue(buffer, value.encode());
-    }    else if (value is AttestationResultWire) {
+    }    else if (value is SignOptionsWire) {
       buffer.putUint8(140);
       writeValue(buffer, value.encode());
-    }    else if (value is GenerateResultWire) {
+    }    else if (value is AttestationResultWire) {
       buffer.putUint8(141);
       writeValue(buffer, value.encode());
-    }    else if (value is PublicKeyWire) {
+    }    else if (value is GenerateResultWire) {
       buffer.putUint8(142);
+      writeValue(buffer, value.encode());
+    }    else if (value is PublicKeyWire) {
+      buffer.putUint8(143);
+      writeValue(buffer, value.encode());
+    }    else if (value is AuthPromptWire) {
+      buffer.putUint8(144);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -588,28 +688,33 @@ class _PigeonCodec extends StandardMessageCodec {
         return value == null ? null : HardwareClassWire.values[value];
       case 133:
         final value = readValue(buffer) as int?;
-        return value == null ? null : AuthClassWire.values[value];
+        return value == null ? null : AuthRequirementWire.values[value];
       case 134:
         final value = readValue(buffer) as int?;
-        return value == null ? null : PublicKeyFormatWire.values[value];
+        return value == null ? null : AuthClassWire.values[value];
       case 135:
         final value = readValue(buffer) as int?;
-        return value == null ? null : AttestationFormatWire.values[value];
+        return value == null ? null : PublicKeyFormatWire.values[value];
       case 136:
         final value = readValue(buffer) as int?;
-        return value == null ? null : SignEncodingWire.values[value];
+        return value == null ? null : AttestationFormatWire.values[value];
       case 137:
-        return KeySpecWire.decode(readValue(buffer)!);
+        final value = readValue(buffer) as int?;
+        return value == null ? null : SignEncodingWire.values[value];
       case 138:
-        return SecurityTierReportWire.decode(readValue(buffer)!);
+        return KeySpecWire.decode(readValue(buffer)!);
       case 139:
-        return SignOptionsWire.decode(readValue(buffer)!);
+        return SecurityTierReportWire.decode(readValue(buffer)!);
       case 140:
-        return AttestationResultWire.decode(readValue(buffer)!);
+        return SignOptionsWire.decode(readValue(buffer)!);
       case 141:
-        return GenerateResultWire.decode(readValue(buffer)!);
+        return AttestationResultWire.decode(readValue(buffer)!);
       case 142:
+        return GenerateResultWire.decode(readValue(buffer)!);
+      case 143:
         return PublicKeyWire.decode(readValue(buffer)!);
+      case 144:
+        return AuthPromptWire.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
     }
@@ -676,16 +781,20 @@ class SignetHostApi {
     return pigeonVar_replyValue! as PublicKeyWire;
   }
 
-  /// Signs a 32-byte digest with no authentication prompt. A wrong-length digest
-  /// is rejected `invalidArgument` before any key access.
-  Future<Uint8List> sign(String handleId, Uint8List digest, SignOptionsWire options) async {
+  /// Signs a 32-byte digest. A null [prompt] is the silent path and raises no
+  /// prompt; a non-null [prompt] drives an auth-gated sign whose biometric prompt
+  /// the native side presents and authenticates directly. A wrong-length digest
+  /// is rejected `invalidArgument` before any key access. A second concurrent
+  /// gated sign is rejected `authInProgress`; a gated key with no presentable host
+  /// UI raises `authContextRequired`.
+  Future<Uint8List> sign(String handleId, Uint8List digest, SignOptionsWire options, AuthPromptWire? prompt) async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.signet.SignetHostApi.sign$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[handleId, digest, options]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[handleId, digest, options, prompt]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
