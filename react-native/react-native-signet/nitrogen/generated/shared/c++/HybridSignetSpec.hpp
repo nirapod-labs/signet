@@ -23,6 +23,8 @@ namespace margelo::nitro::signet { struct PublicKeyData; }
 namespace margelo::nitro::signet { enum class PublicKeyFormat; }
 // Forward declaration of `SignOptions` to properly resolve imports.
 namespace margelo::nitro::signet { struct SignOptions; }
+// Forward declaration of `AuthPrompt` to properly resolve imports.
+namespace margelo::nitro::signet { struct AuthPrompt; }
 // Forward declaration of `AttestationResult` to properly resolve imports.
 namespace margelo::nitro::signet { struct AttestationResult; }
 // Forward declaration of `SecurityTierReport` to properly resolve imports.
@@ -36,6 +38,8 @@ namespace margelo::nitro::signet { struct SecurityTierReport; }
 #include <NitroModules/ArrayBuffer.hpp>
 #include <NitroModules/Promise.hpp>
 #include "SignOptions.hpp"
+#include "AuthPrompt.hpp"
+#include <optional>
 #include "AttestationResult.hpp"
 #include "SecurityTierReport.hpp"
 
@@ -72,7 +76,7 @@ namespace margelo::nitro::signet {
       // Methods
       virtual GenerateResult generateKey(const KeySpec& spec) = 0;
       virtual PublicKeyData getPublicKey(const std::string& handleId, PublicKeyFormat format) = 0;
-      virtual std::shared_ptr<Promise<std::shared_ptr<ArrayBuffer>>> sign(const std::string& handleId, const std::shared_ptr<ArrayBuffer>& digest, const SignOptions& options) = 0;
+      virtual std::shared_ptr<Promise<std::shared_ptr<ArrayBuffer>>> sign(const std::string& handleId, const std::shared_ptr<ArrayBuffer>& digest, const SignOptions& options, const std::optional<AuthPrompt>& prompt) = 0;
       virtual AttestationResult getAttestation(const std::string& handleId) = 0;
       virtual SecurityTierReport getSecurityTier(const std::string& handleId) = 0;
       virtual bool exists(const std::string& alias) = 0;

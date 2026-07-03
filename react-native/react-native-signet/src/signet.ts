@@ -5,6 +5,7 @@ import { NitroModules } from 'react-native-nitro-modules'
 import type {
   AttestationFormat,
   AuthClass,
+  AuthRequirement,
   HardwareClass,
   PublicKeyFormat,
   SecurityLevel,
@@ -17,6 +18,7 @@ import type {
 export type {
   AttestationFormat,
   AuthClass,
+  AuthRequirement,
   HardwareClass,
   PublicKeyFormat,
   SecurityLevel,
@@ -79,6 +81,29 @@ export interface SignOptions {
   readonly encoding?: SignEncoding
 }
 
+/**
+ * The presence check bound to a key at generation; omitting it creates a silent key.
+ * `authValiditySeconds` null or 0 is per-use auth; `invalidateOnBiometricEnrollment`
+ * (default true) drops the key when the biometric set changes.
+ */
+export interface AccessControl {
+  readonly authRequirement: AuthRequirement
+  readonly authValiditySeconds?: number
+  readonly invalidateOnBiometricEnrollment?: boolean
+}
+
+/**
+ * The prompt for an auth-gated [Signet.sign]. The native side presents it and
+ * authenticates the hardware key directly; [authRequirement] must match the key's
+ * and selects the prompt's authenticators. [negativeButtonText] defaults to `Cancel`.
+ */
+export interface AuthPrompt {
+  readonly title: string
+  readonly subtitle?: string
+  readonly negativeButtonText?: string
+  readonly authRequirement: AuthRequirement
+}
+
 /** The one closed error set; every binding raises these exact names (`userCanceled`, one `l`). */
 export type SignetErrorCode =
   | 'unavailableTier'
@@ -126,8 +151,9 @@ const native = NitroModules.createHybridObject<SignetSpec>('Signet')
 
 /**
  * Hardware-backed P-256 signing keys via the native Secure Enclave and Android
- * Keystore cores. This surface is the non-interactive one: keys are silent and
- * signing raises no prompt. Every call marshals to the native core and rebuilds the
+ * Keystore cores. A key is silent by default or carries a presence check; a gated
+ * key is signed by passing an [AuthPrompt], which the native side presents and
+ * authenticates directly. Every call marshals to the native core and rebuilds the
  * typed result; a core failure arrives as a [SignetError] over the closed set.
  */
 export const Signet = {
@@ -135,19 +161,26 @@ export const Signet = {
    * Generates a non-exportable P-256 key at [alias]. [tierPolicy] selects by class
    * (default [strongest]); a hard policy below its floor fails `unavailableTier`,
    * while [bestEffort] never fails on tier and its report carries
-   * `meetsFloor === false`. An existing alias fails `keyAlreadyExists`.
+   * `meetsFloor === false`. [accessControl] binds a presence check to the key
+   * (omitted means a silent key); a gated key needs an [AuthPrompt] at [sign]. An
+   * existing alias fails `keyAlreadyExists`.
    */
   generateKey(options: {
     alias: string
     tierPolicy?: TierPolicy
+    accessControl?: AccessControl
     attestationChallenge?: ArrayBuffer
   }): { handle: KeyHandle; report: SecurityTierReport } {
     const policy = options.tierPolicy ?? strongest
+    const access = options.accessControl
     const result = guard(() =>
       native.generateKey({
         alias: options.alias,
         tierPolicyKind: policy.kind,
         atLeastClass: policy.kind === 'atLeast' ? policy.floor : undefined,
+        authRequirement: access?.authRequirement ?? 'none',
+        authValiditySeconds: access?.authValiditySeconds,
+        invalidateOnBiometricEnrollment: access?.invalidateOnBiometricEnrollment ?? true,
         attestationChallenge: options.attestationChallenge,
       }),
     )
@@ -161,12 +194,26 @@ export const Signet = {
   },
 
   /**
-   * Signs a 32-byte digest (`NONEwithECDSA` / `ecdsaSignatureDigestX962SHA256`) with
-   * no prompt. A wrong-length digest fails `invalidArgument` before any key access.
+   * Signs a 32-byte digest (`NONEwithECDSA` / `ecdsaSignatureDigestX962SHA256`).
+   * With no [prompt] this is the silent path and raises no prompt; pass a [prompt]
+   * for a gated key and the native side presents the biometric prompt and
+   * authenticates the hardware key directly. A wrong-length digest fails
+   * `invalidArgument`; a second concurrent gated sign fails `authInProgress`; a gated
+   * key with no presentable host UI fails `authContextRequired`.
    */
-  async sign(handle: KeyHandle, digest: ArrayBuffer, options?: SignOptions): Promise<ArrayBuffer> {
+  async sign(
+    handle: KeyHandle,
+    digest: ArrayBuffer,
+    options?: SignOptions,
+    prompt?: AuthPrompt,
+  ): Promise<ArrayBuffer> {
     return guardAsync(() =>
-      native.sign(handle.id, digest, { encoding: options?.encoding ?? 'der' }),
+      native.sign(
+        handle.id,
+        digest,
+        { encoding: options?.encoding ?? 'der' },
+        prompt === undefined ? undefined : promptToWire(prompt),
+      ),
     )
   },
 
@@ -228,6 +275,16 @@ function signetErrorFrom(error: unknown): SignetError {
   const token = head.slice(head.lastIndexOf(':') + 1).trim()
   const code = ERROR_CODES.find((candidate) => candidate === token)
   return new SignetError(code ?? 'hardwareError', message)
+}
+
+/** Maps the idiomatic [AuthPrompt] to the wire shape, defaulting the cancel label. */
+function promptToWire(prompt: AuthPrompt) {
+  return {
+    title: prompt.title,
+    subtitle: prompt.subtitle,
+    negativeButtonText: prompt.negativeButtonText ?? 'Cancel',
+    authRequirement: prompt.authRequirement,
+  }
 }
 
 function reportFrom(report: {

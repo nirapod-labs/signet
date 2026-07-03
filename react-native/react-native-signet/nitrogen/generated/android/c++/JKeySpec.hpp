@@ -10,7 +10,9 @@
 #include <fbjni/fbjni.h>
 #include "KeySpec.hpp"
 
+#include "AuthRequirement.hpp"
 #include "HardwareClass.hpp"
+#include "JAuthRequirement.hpp"
 #include "JHardwareClass.hpp"
 #include "JTierPolicyKind.hpp"
 #include "TierPolicyKind.hpp"
@@ -44,12 +46,21 @@ namespace margelo::nitro::signet {
       jni::local_ref<JTierPolicyKind> tierPolicyKind = this->getFieldValue(fieldTierPolicyKind);
       static const auto fieldAtLeastClass = clazz->getField<JHardwareClass>("atLeastClass");
       jni::local_ref<JHardwareClass> atLeastClass = this->getFieldValue(fieldAtLeastClass);
+      static const auto fieldAuthRequirement = clazz->getField<JAuthRequirement>("authRequirement");
+      jni::local_ref<JAuthRequirement> authRequirement = this->getFieldValue(fieldAuthRequirement);
+      static const auto fieldAuthValiditySeconds = clazz->getField<jni::JDouble>("authValiditySeconds");
+      jni::local_ref<jni::JDouble> authValiditySeconds = this->getFieldValue(fieldAuthValiditySeconds);
+      static const auto fieldInvalidateOnBiometricEnrollment = clazz->getField<jboolean>("invalidateOnBiometricEnrollment");
+      jboolean invalidateOnBiometricEnrollment = this->getFieldValue(fieldInvalidateOnBiometricEnrollment);
       static const auto fieldAttestationChallenge = clazz->getField<JArrayBuffer::javaobject>("attestationChallenge");
       jni::local_ref<JArrayBuffer::javaobject> attestationChallenge = this->getFieldValue(fieldAttestationChallenge);
       return KeySpec(
         alias->toStdString(),
         tierPolicyKind->toCpp(),
         atLeastClass != nullptr ? std::make_optional(atLeastClass->toCpp()) : std::nullopt,
+        authRequirement->toCpp(),
+        authValiditySeconds != nullptr ? std::make_optional(authValiditySeconds->value()) : std::nullopt,
+        static_cast<bool>(invalidateOnBiometricEnrollment),
         attestationChallenge != nullptr ? std::make_optional(attestationChallenge->cthis()->getArrayBuffer()) : std::nullopt
       );
     }
@@ -60,7 +71,7 @@ namespace margelo::nitro::signet {
      */
     [[maybe_unused]]
     static jni::local_ref<JKeySpec::javaobject> fromCpp(const KeySpec& value) {
-      using JSignature = JKeySpec(jni::alias_ref<jni::JString>, jni::alias_ref<JTierPolicyKind>, jni::alias_ref<JHardwareClass>, jni::alias_ref<JArrayBuffer::javaobject>);
+      using JSignature = JKeySpec(jni::alias_ref<jni::JString>, jni::alias_ref<JTierPolicyKind>, jni::alias_ref<JHardwareClass>, jni::alias_ref<JAuthRequirement>, jni::alias_ref<jni::JDouble>, jboolean, jni::alias_ref<JArrayBuffer::javaobject>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
@@ -68,6 +79,9 @@ namespace margelo::nitro::signet {
         jni::make_jstring(value.alias),
         JTierPolicyKind::fromCpp(value.tierPolicyKind),
         value.atLeastClass.has_value() ? JHardwareClass::fromCpp(value.atLeastClass.value()) : nullptr,
+        JAuthRequirement::fromCpp(value.authRequirement),
+        value.authValiditySeconds.has_value() ? jni::JDouble::valueOf(value.authValiditySeconds.value()) : nullptr,
+        value.invalidateOnBiometricEnrollment,
         value.attestationChallenge.has_value() ? JArrayBuffer::wrap(value.attestationChallenge.value()) : nullptr
       );
     }

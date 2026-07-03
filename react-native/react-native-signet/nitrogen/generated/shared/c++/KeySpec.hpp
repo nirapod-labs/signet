@@ -32,11 +32,14 @@
 namespace margelo::nitro::signet { enum class TierPolicyKind; }
 // Forward declaration of `HardwareClass` to properly resolve imports.
 namespace margelo::nitro::signet { enum class HardwareClass; }
+// Forward declaration of `AuthRequirement` to properly resolve imports.
+namespace margelo::nitro::signet { enum class AuthRequirement; }
 
 #include <string>
 #include "TierPolicyKind.hpp"
 #include "HardwareClass.hpp"
 #include <optional>
+#include "AuthRequirement.hpp"
 #include <NitroModules/ArrayBuffer.hpp>
 
 namespace margelo::nitro::signet {
@@ -49,11 +52,14 @@ namespace margelo::nitro::signet {
     std::string alias     SWIFT_PRIVATE;
     TierPolicyKind tierPolicyKind     SWIFT_PRIVATE;
     std::optional<HardwareClass> atLeastClass     SWIFT_PRIVATE;
+    AuthRequirement authRequirement     SWIFT_PRIVATE;
+    std::optional<double> authValiditySeconds     SWIFT_PRIVATE;
+    bool invalidateOnBiometricEnrollment     SWIFT_PRIVATE;
     std::optional<std::shared_ptr<ArrayBuffer>> attestationChallenge     SWIFT_PRIVATE;
 
   public:
     KeySpec() = default;
-    explicit KeySpec(std::string alias, TierPolicyKind tierPolicyKind, std::optional<HardwareClass> atLeastClass, std::optional<std::shared_ptr<ArrayBuffer>> attestationChallenge): alias(alias), tierPolicyKind(tierPolicyKind), atLeastClass(atLeastClass), attestationChallenge(attestationChallenge) {}
+    explicit KeySpec(std::string alias, TierPolicyKind tierPolicyKind, std::optional<HardwareClass> atLeastClass, AuthRequirement authRequirement, std::optional<double> authValiditySeconds, bool invalidateOnBiometricEnrollment, std::optional<std::shared_ptr<ArrayBuffer>> attestationChallenge): alias(alias), tierPolicyKind(tierPolicyKind), atLeastClass(atLeastClass), authRequirement(authRequirement), authValiditySeconds(authValiditySeconds), invalidateOnBiometricEnrollment(invalidateOnBiometricEnrollment), attestationChallenge(attestationChallenge) {}
 
   public:
     friend bool operator==(const KeySpec& lhs, const KeySpec& rhs) = default;
@@ -72,6 +78,9 @@ namespace margelo::nitro {
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "alias"))),
         JSIConverter<margelo::nitro::signet::TierPolicyKind>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "tierPolicyKind"))),
         JSIConverter<std::optional<margelo::nitro::signet::HardwareClass>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "atLeastClass"))),
+        JSIConverter<margelo::nitro::signet::AuthRequirement>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "authRequirement"))),
+        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "authValiditySeconds"))),
+        JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "invalidateOnBiometricEnrollment"))),
         JSIConverter<std::optional<std::shared_ptr<ArrayBuffer>>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "attestationChallenge")))
       );
     }
@@ -80,6 +89,9 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "alias"), JSIConverter<std::string>::toJSI(runtime, arg.alias));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "tierPolicyKind"), JSIConverter<margelo::nitro::signet::TierPolicyKind>::toJSI(runtime, arg.tierPolicyKind));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "atLeastClass"), JSIConverter<std::optional<margelo::nitro::signet::HardwareClass>>::toJSI(runtime, arg.atLeastClass));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "authRequirement"), JSIConverter<margelo::nitro::signet::AuthRequirement>::toJSI(runtime, arg.authRequirement));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "authValiditySeconds"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.authValiditySeconds));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "invalidateOnBiometricEnrollment"), JSIConverter<bool>::toJSI(runtime, arg.invalidateOnBiometricEnrollment));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "attestationChallenge"), JSIConverter<std::optional<std::shared_ptr<ArrayBuffer>>>::toJSI(runtime, arg.attestationChallenge));
       return obj;
     }
@@ -94,6 +106,9 @@ namespace margelo::nitro {
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "alias")))) return false;
       if (!JSIConverter<margelo::nitro::signet::TierPolicyKind>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "tierPolicyKind")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::signet::HardwareClass>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "atLeastClass")))) return false;
+      if (!JSIConverter<margelo::nitro::signet::AuthRequirement>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "authRequirement")))) return false;
+      if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "authValiditySeconds")))) return false;
+      if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "invalidateOnBiometricEnrollment")))) return false;
       if (!JSIConverter<std::optional<std::shared_ptr<ArrayBuffer>>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "attestationChallenge")))) return false;
       return true;
     }
