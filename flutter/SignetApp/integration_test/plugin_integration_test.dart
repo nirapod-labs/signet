@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Nirapod Labs
 
-// Integration test for the non-interactive surface. It runs in a full Flutter
-// app, so it reaches the native core and the real hardware key store, unlike the
-// Dart unit tests. It is exercised on the device lane; the analyze-only CI checks
-// that it compiles against the plugin API.
+// Integration test for the non-interactive surface: generateKey (bestEffort),
+// getPublicKey, then sign against the real hardware key store. Device-lane; the
+// analyze-only CI check confirms it compiles against the plugin API.
 
 import 'dart:typed_data';
 
