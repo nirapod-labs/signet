@@ -24,9 +24,10 @@ include_directories(
 
 find_library(LOG_LIB log)
 
-# Link all libraries together
+# Link all libraries together. The android/ core is Kotlin, compiled in-module via
+# build.gradle sourceSets, not linked here; `android` below is the NDK system lib.
 target_link_libraries(
         ${PACKAGE_NAME}
         ${LOG_LIB}
-        android                                   # <-- Android core
+        android
 )

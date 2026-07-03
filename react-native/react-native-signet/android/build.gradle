@@ -113,6 +113,11 @@ android {
 
   sourceSets {
     main {
+      // Compile the shared android/ core in-module. A Nitro module is built as a
+      // subproject of the host app, so an external project dependency would not
+      // resolve for consumers; the core Kotlin is compiled here directly, linked
+      // dev-local by relative path until the core is a published artifact.
+      java.srcDirs += ["../../../android/src/main/kotlin"]
       if (isNewArchitectureEnabled()) {
         java.srcDirs += [
           // React Codegen files
@@ -137,6 +142,11 @@ dependencies {
 
   // Add a dependency on NitroModules
   implementation project(":react-native-nitro-modules")
+
+  // The android/ core is compiled in-module (see sourceSets); its Keystore and
+  // auth-gated paths pull in BiometricPrompt and coroutines.
+  implementation "androidx.biometric:biometric:1.1.0"
+  implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1"
 }
 
 if (isNewArchitectureEnabled()) {
