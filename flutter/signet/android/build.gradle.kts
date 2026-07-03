@@ -37,7 +37,11 @@ android {
 
     sourceSets {
         getByName("main") {
-            java.srcDirs("src/main/kotlin")
+            // Compile the android/ core in-module. A Flutter plugin is built as a
+            // subproject of the host app, so an external project dependency would
+            // not resolve for consumers; referencing the core source keeps a
+            // single source of truth without vendoring a copy.
+            java.srcDirs("src/main/kotlin", "../../../android/src/main/kotlin")
         }
         getByName("test") {
             java.srcDirs("src/test/kotlin")
@@ -72,6 +76,9 @@ kotlin {
 }
 
 dependencies {
+    // Runtime deps of the compiled-in core; versions match android/gradle/libs.versions.toml.
+    implementation("androidx.biometric:biometric:1.1.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+
     testImplementation("org.jetbrains.kotlin:kotlin-test")
-    testImplementation("org.mockito:mockito-core:5.0.0")
 }
