@@ -8,8 +8,8 @@ import type {
   HardwareClass,
   PublicKeyFormat,
   SecurityLevel,
-  Signet as SignetSpec,
   SignEncoding,
+  Signet as SignetSpec,
   TierEvidence,
   TierPolicyKind,
 } from './specs/signet.nitro'
