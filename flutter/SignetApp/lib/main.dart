@@ -1,58 +1,82 @@
-import 'package:flutter/material.dart';
-import 'dart:async';
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Nirapod Labs
 
-import 'package:flutter/services.dart';
+import 'dart:typed_data';
+
+import 'package:flutter/material.dart';
 import 'package:signet/signet.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+void main() => runApp(const SignetExampleApp());
 
-class MyApp extends StatefulWidget {
-  const MyApp({super.key});
-
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  String _platformVersion = 'Unknown';
-  final _signetPlugin = Signet();
-
-  @override
-  void initState() {
-    super.initState();
-    initPlatformState();
-  }
-
-  // Platform messages are asynchronous, so we initialize in an async method.
-  Future<void> initPlatformState() async {
-    String platformVersion;
-    // Platform messages may fail, so we use a try/catch PlatformException.
-    // We also handle the message potentially returning null.
-    try {
-      platformVersion =
-          await _signetPlugin.getPlatformVersion() ?? 'Unknown platform version';
-    } on PlatformException {
-      platformVersion = 'Failed to get platform version.';
-    }
-
-    // If the widget was removed from the tree while the asynchronous platform
-    // message was in flight, we want to discard the reply rather than calling
-    // setState to update our non-existent appearance.
-    if (!mounted) return;
-
-    setState(() {
-      _platformVersion = platformVersion;
-    });
-  }
+class SignetExampleApp extends StatelessWidget {
+  const SignetExampleApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(title: const Text('Plugin example app')),
-        body: Center(child: Text('Running on: $_platformVersion\n')),
+      title: 'Signet',
+      theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
+      home: const HomePage(),
+    );
+  }
+}
+
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  static const String _alias = 'signet.example.demo';
+
+  final Signet _signet = Signet();
+  String _status = 'Generate a hardware key and sign a digest.';
+  bool _busy = false;
+
+  Future<void> _run() async {
+    setState(() => _busy = true);
+    try {
+      // Best effort so the demo also runs on a device or emulator without a
+      // discrete secure element; the report states what was actually achieved.
+      await _signet.delete(_alias);
+      final (KeyHandle handle, SecurityTierReport report) =
+          await _signet.generateKey(alias: _alias, tierPolicy: const BestEffort());
+      final publicKey = await _signet.getPublicKey(handle);
+      final digest = Uint8List.fromList(List<int>.generate(32, (i) => i));
+      final signature = await _signet.sign(handle, digest);
+      setState(() {
+        _status = 'tier: ${report.achieved.name} '
+            '(evidence: ${report.evidence.name})\n'
+            'public key: ${publicKey.bytes.length} bytes\n'
+            'signature: ${signature.length} bytes';
+      });
+    } on SignetException catch (error) {
+      setState(() => _status = 'SignetException: ${error.code.name}');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Signet example')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(_status, textAlign: TextAlign.center),
+            ),
+            FilledButton(
+              onPressed: _busy ? null : _run,
+              child: const Text('Generate key and sign'),
+            ),
+          ],
+        ),
       ),
     );
   }

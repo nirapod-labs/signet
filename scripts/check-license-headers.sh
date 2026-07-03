@@ -23,7 +23,7 @@ done < <(git ls-files \
   'react-native/react-native-signet/android/src/main/**/*.kt' \
   'flutter/signet/lib/**/*.dart' \
   'flutter/signet/android/src/**/*.kt' \
-  'flutter/signet/ios/**/*.swift' 'flutter/signet/macos/**/*.swift')
+  'flutter/signet/darwin/**/*.swift')
 
 if [ "$missing" -ne 0 ]; then
   echo "license-header check failed"

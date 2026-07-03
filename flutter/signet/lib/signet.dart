@@ -1,15 +1,378 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Nirapod Labs
 
-import 'signet_platform_interface.dart';
-
-/// Signet: hardware-backed P-256 signing keys via the native cores.
+/// Signet: hardware-backed P-256 signing keys via the native Secure Enclave and
+/// Android Keystore cores.
 ///
-/// Scaffold: [getPlatformVersion] is a smoke test that round-trips to the
-/// native side. The signing API is added with the key code.
+/// This library is a thin channel over those cores. It holds no policy and no
+/// key material: every decision that could downgrade a tier, overwrite a key, or
+/// expose a private key is made in the native core, and Dart only marshals the
+/// request and rebuilds the typed result. The private key has no export path on
+/// any surface here.
+library;
+
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/services.dart' show PlatformException;
+
+import 'src/messages.g.dart';
+
+/// The hardware backing a signing key, reported as the achieved level and never
+/// assumed from the request.
+enum SecurityLevel { secureEnclave, strongBox, tee, tpm, software }
+
+/// How the achieved [SecurityLevel] was determined. Only [attested] is
+/// cryptographic proof; every other value is an on-device self-report.
+enum TierEvidence {
+  attested,
+  keyInfoReadback,
+  seTokenPresent,
+  inferred,
+  selfReportUnverified,
+}
+
+/// The presence check bound to a key at creation, derived from the created key
+/// and never echoed from the request.
+enum AuthClass {
+  none,
+  biometricOnly,
+  biometricOrDeviceCredential,
+  deviceCredentialOnly,
+}
+
+/// A class in the tier partial order. [discreteSecure] covers Secure Enclave,
+/// StrongBox, and TPM, and outranks [trustedEnvironment].
+enum HardwareClass { discreteSecure, trustedEnvironment }
+
+/// The signature wire encoding.
+enum SignEncoding { der, rawRS }
+
+/// The public-key wire format.
+enum PublicKeyFormat { rawX962, spki }
+
+/// The attestation wire format.
+enum AttestationFormat { androidKeyChain, none }
+
+/// Tier selection by class, never a concrete [SecurityLevel]. The achieved level
+/// is reported in [SecurityTierReport.achieved].
+///
+/// Ordering is a partial order over classes: `discreteSecure {secureEnclave,
+/// strongBox, tpm} > tee > software`. `tpm` is not weaker than `tee`.
+sealed class TierPolicy {
+  const TierPolicy();
+}
+
+/// The device's best hardware tier. Fails [SignetErrorCode.unavailableTier] if no
+/// hardware is available; never returns software.
+class Strongest extends TierPolicy {
+  const Strongest();
+}
+
+/// A hard floor by class. Fails [SignetErrorCode.unavailableTier] below the class.
+class AtLeast extends TierPolicy {
+  const AtLeast(this.floor);
+
+  final HardwareClass floor;
+}
+
+/// Never fails on tier where a software keystore exists; may then return a weaker
+/// level with `meetsFloor == false` and honest evidence.
+class BestEffort extends TierPolicy {
+  const BestEffort();
+}
+
+/// One report shape for every operation that reads a key's tier. [requested] and
+/// [authEnforced] are null on a `getSecurityTier` re-read, where the policy is not
+/// stored with the key and the platform may not read the created access control
+/// back. A null [authEnforced] means unobservable, distinct from [AuthClass.none].
+class SecurityTierReport {
+  const SecurityTierReport({
+    required this.achieved,
+    required this.requested,
+    required this.meetsFloor,
+    required this.evidence,
+    required this.authEnforced,
+    required this.invalidated,
+    this.schemaVersion = 1,
+  });
+
+  final SecurityLevel achieved;
+  final TierPolicy? requested;
+  final bool meetsFloor;
+  final TierEvidence evidence;
+  final AuthClass? authEnforced;
+  final bool invalidated;
+  final int schemaVersion;
+}
+
+/// Options for [Signet.sign].
+class SignOptions {
+  const SignOptions({this.encoding = SignEncoding.der});
+
+  final SignEncoding encoding;
+}
+
+/// The attestation for a key: a certificate chain ([AttestationFormat.androidKeyChain]),
+/// one DER-encoded certificate per element, or [AttestationFormat.none] with a null
+/// chain. Produced, never verified, by this library.
+class AttestationResult {
+  const AttestationResult({
+    required this.format,
+    required this.chain,
+    this.schemaVersion = 1,
+  });
+
+  final AttestationFormat format;
+  final List<Uint8List>? chain;
+  final int schemaVersion;
+}
+
+/// A public key in one of the pinned formats. There is no matching private-key
+/// surface anywhere in this library.
+class PublicKey {
+  const PublicKey({required this.format, required this.bytes});
+
+  final PublicKeyFormat format;
+  final Uint8List bytes;
+}
+
+/// An opaque handle to a generated key. It carries only an id and no key
+/// material; the private key never leaves hardware. A handle is reconstructible
+/// from its id; a caller that persisted the id can rebuild it.
+class KeyHandle {
+  const KeyHandle(this.id);
+
+  final String id;
+}
+
+/// The one closed error set. Every binding raises these exact names; spelling is
+/// pinned (`userCanceled`, one `l`).
+enum SignetErrorCode {
+  unavailableTier,
+  userCanceled,
+  keyInvalidated,
+  authFailed,
+  authContextRequired,
+  notFound,
+  keyAlreadyExists,
+  tierMismatchOnExisting,
+  attestationUnsupported,
+  hardwareError,
+  unsupportedPlatform,
+  invalidArgument,
+  authInProgress,
+}
+
+/// The exception every Signet operation throws, carrying one [SignetErrorCode].
+/// Callers match on [code] structurally; the code is never string-matched.
+class SignetException implements Exception {
+  const SignetException(this.code, [this.message]);
+
+  final SignetErrorCode code;
+  final String? message;
+
+  @override
+  String toString() =>
+      'SignetException(${code.name}${message == null ? '' : ': $message'})';
+}
+
+/// Hardware-backed P-256 signing keys.
+///
+/// The surface here is the non-interactive one: keys are created with no presence
+/// check and signing raises no prompt. Every call marshals to the native core and
+/// rebuilds the typed result; a core error arrives as a [SignetException] over the
+/// closed [SignetErrorCode] set.
 class Signet {
-  /// Returns the native platform version string.
-  Future<String?> getPlatformVersion() {
-    return SignetPlatform.instance.getPlatformVersion();
+  /// Binds to the platform channel over the native core.
+  Signet() : _host = SignetHostApi();
+
+  /// Injects a host for unit tests. Not part of the public surface.
+  @visibleForTesting
+  Signet.withHostApi(this._host);
+
+  final SignetHostApi _host;
+
+  /// Generates a non-exportable P-256 key at [alias]. [tierPolicy] selects by
+  /// class (default [Strongest]); a hard policy below its floor fails
+  /// [SignetErrorCode.unavailableTier], while [BestEffort] never fails on tier and
+  /// its report carries `meetsFloor == false`. An existing alias fails
+  /// [SignetErrorCode.keyAlreadyExists] with no silent overwrite. An
+  /// [attestationChallenge] is bound into the key here; [getAttestation] takes
+  /// none. Returns the handle and its report together.
+  Future<(KeyHandle, SecurityTierReport)> generateKey({
+    required String alias,
+    TierPolicy tierPolicy = const Strongest(),
+    Uint8List? attestationChallenge,
+  }) async {
+    final result = await _guard(
+      () => _host.generateKey(
+        KeySpecWire(
+          alias: alias,
+          tierPolicyKind: _tierKindTo(tierPolicy),
+          atLeastClass:
+              tierPolicy is AtLeast ? _hardwareClassTo(tierPolicy.floor) : null,
+          attestationChallenge: attestationChallenge,
+        ),
+      ),
+    );
+    return (KeyHandle(result.handleId), _reportFrom(result.report));
+  }
+
+  /// Public key only. The private key has no export path.
+  Future<PublicKey> getPublicKey(
+    KeyHandle handle, {
+    PublicKeyFormat format = PublicKeyFormat.rawX962,
+  }) async {
+    final result =
+        await _guard(() => _host.getPublicKey(handle.id, _pubFormatTo(format)));
+    return PublicKey(format: _pubFormatFrom(result.format), bytes: result.bytes);
+  }
+
+  /// Signs a 32-byte digest (`NONEwithECDSA` / `ecdsaSignatureDigestX962SHA256`)
+  /// with no authentication prompt. A wrong-length digest fails
+  /// [SignetErrorCode.invalidArgument] before any key access.
+  Future<Uint8List> sign(
+    KeyHandle handle,
+    Uint8List digest, {
+    SignOptions options = const SignOptions(),
+  }) {
+    return _guard(
+      () => _host.sign(
+        handle.id,
+        digest,
+        SignOptionsWire(encoding: _encodingTo(options.encoding)),
+      ),
+    );
+  }
+
+  /// Attestation is produced, never verified, by this library. The challenge was
+  /// bound at [generateKey]; this call takes none. The format is
+  /// [AttestationFormat.androidKeyChain] (Android) or [AttestationFormat.none]
+  /// (Apple Secure Enclave has no per-key attestation).
+  Future<AttestationResult> getAttestation(KeyHandle handle) async {
+    final result = await _guard(() => _host.getAttestation(handle.id));
+    return AttestationResult(
+      format: _attestationFormatFrom(result.format),
+      chain: result.chain?.whereType<Uint8List>().toList(growable: false),
+      schemaVersion: result.schemaVersion,
+    );
+  }
+
+  /// Re-reads a key's tier. Does not throw on an invalidated-but-present key: the
+  /// report's `invalidated == true`.
+  Future<SecurityTierReport> getSecurityTier(KeyHandle handle) async {
+    final result = await _guard(() => _host.getSecurityTier(handle.id));
+    return _reportFrom(result);
+  }
+
+  /// Whether a key exists for [alias].
+  Future<bool> exists(String alias) => _guard(() => _host.exists(alias));
+
+  /// Deletes the key for [alias]. Idempotent: a missing alias is not an error.
+  Future<void> delete(String alias) => _guard(() => _host.deleteKey(alias));
+
+  /// Runs a channel call and maps a platform error's code to a [SignetException]
+  /// over the closed set. An unrecognized code maps to
+  /// [SignetErrorCode.hardwareError]; the conformance suite asserts the wire set
+  /// is exactly the closed set, so a new native code cannot masquerade unnoticed.
+  Future<T> _guard<T>(Future<T> Function() call) async {
+    try {
+      return await call();
+    } on PlatformException catch (error) {
+      throw SignetException(_codeFrom(error.code), error.message);
+    }
+  }
+
+  SecurityTierReport _reportFrom(SecurityTierReportWire wire) {
+    return SecurityTierReport(
+      achieved: _securityLevelFrom(wire.achieved),
+      requested: _tierPolicyFrom(wire.requestedKind, wire.requestedAtLeastClass),
+      meetsFloor: wire.meetsFloor,
+      evidence: _evidenceFrom(wire.evidence),
+      authEnforced:
+          wire.authEnforced == null ? null : _authClassFrom(wire.authEnforced!),
+      invalidated: wire.invalidated,
+      schemaVersion: wire.schemaVersion,
+    );
   }
 }
+
+SignetErrorCode _codeFrom(String code) {
+  for (final candidate in SignetErrorCode.values) {
+    if (candidate.name == code) return candidate;
+  }
+  return SignetErrorCode.hardwareError;
+}
+
+TierPolicyKindWire _tierKindTo(TierPolicy policy) => switch (policy) {
+      Strongest() => TierPolicyKindWire.strongest,
+      AtLeast() => TierPolicyKindWire.atLeast,
+      BestEffort() => TierPolicyKindWire.bestEffort,
+    };
+
+TierPolicy? _tierPolicyFrom(
+  TierPolicyKindWire? kind,
+  HardwareClassWire? atLeastClass,
+) =>
+    switch (kind) {
+      null => null,
+      TierPolicyKindWire.strongest => const Strongest(),
+      TierPolicyKindWire.atLeast => AtLeast(_hardwareClassFrom(atLeastClass!)),
+      TierPolicyKindWire.bestEffort => const BestEffort(),
+    };
+
+HardwareClassWire _hardwareClassTo(HardwareClass value) => switch (value) {
+      HardwareClass.discreteSecure => HardwareClassWire.discreteSecure,
+      HardwareClass.trustedEnvironment => HardwareClassWire.trustedEnvironment,
+    };
+
+HardwareClass _hardwareClassFrom(HardwareClassWire value) => switch (value) {
+      HardwareClassWire.discreteSecure => HardwareClass.discreteSecure,
+      HardwareClassWire.trustedEnvironment => HardwareClass.trustedEnvironment,
+    };
+
+SecurityLevel _securityLevelFrom(SecurityLevelWire value) => switch (value) {
+      SecurityLevelWire.secureEnclave => SecurityLevel.secureEnclave,
+      SecurityLevelWire.strongBox => SecurityLevel.strongBox,
+      SecurityLevelWire.tee => SecurityLevel.tee,
+      SecurityLevelWire.tpm => SecurityLevel.tpm,
+      SecurityLevelWire.software => SecurityLevel.software,
+    };
+
+TierEvidence _evidenceFrom(TierEvidenceWire value) => switch (value) {
+      TierEvidenceWire.attested => TierEvidence.attested,
+      TierEvidenceWire.keyInfoReadback => TierEvidence.keyInfoReadback,
+      TierEvidenceWire.seTokenPresent => TierEvidence.seTokenPresent,
+      TierEvidenceWire.inferred => TierEvidence.inferred,
+      TierEvidenceWire.selfReportUnverified => TierEvidence.selfReportUnverified,
+    };
+
+AuthClass _authClassFrom(AuthClassWire value) => switch (value) {
+      AuthClassWire.none => AuthClass.none,
+      AuthClassWire.biometricOnly => AuthClass.biometricOnly,
+      AuthClassWire.biometricOrDeviceCredential =>
+        AuthClass.biometricOrDeviceCredential,
+      AuthClassWire.deviceCredentialOnly => AuthClass.deviceCredentialOnly,
+    };
+
+SignEncodingWire _encodingTo(SignEncoding value) => switch (value) {
+      SignEncoding.der => SignEncodingWire.der,
+      SignEncoding.rawRS => SignEncodingWire.rawRS,
+    };
+
+PublicKeyFormatWire _pubFormatTo(PublicKeyFormat value) => switch (value) {
+      PublicKeyFormat.rawX962 => PublicKeyFormatWire.rawX962,
+      PublicKeyFormat.spki => PublicKeyFormatWire.spki,
+    };
+
+PublicKeyFormat _pubFormatFrom(PublicKeyFormatWire value) => switch (value) {
+      PublicKeyFormatWire.rawX962 => PublicKeyFormat.rawX962,
+      PublicKeyFormatWire.spki => PublicKeyFormat.spki,
+    };
+
+AttestationFormat _attestationFormatFrom(AttestationFormatWire value) =>
+    switch (value) {
+      AttestationFormatWire.androidKeyChain => AttestationFormat.androidKeyChain,
+      AttestationFormatWire.none => AttestationFormat.none,
+    };
