@@ -15,7 +15,6 @@ while IFS= read -r f; do
 done < <(git ls-files \
   'apple/Sources/**/*.swift' 'apple/Tests/**/*.swift' \
   'android/src/**/*.kt' \
-  'windows/**/*.hpp' 'windows/**/*.cpp' 'windows/**/*.h' \
   'kmp/signet/src/**/*.kt' \
   'conformance/harness/**/*.mjs' 'conformance/runners/**' \
   'react-native/react-native-signet/src/**/*.ts' \

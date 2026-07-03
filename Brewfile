@@ -6,14 +6,13 @@
 # version in .xcode-version via the App Store or the xcodes CLI below.
 
 # Native build + lint toolchain
-brew "cmake"        # the Windows CNG core (C++) build system
+brew "cmake"        # the React Native Android C++ (Nitro) build
 brew "llvm"         # clang-format, clang-tidy, and clangd for the C++ side
 brew "swiftlint"    # Swift lint, reads .swiftlint.yml
 brew "swiftformat"  # Swift format, reads .swiftformat
 brew "ktlint"       # Kotlin lint (android and kmp)
 brew "detekt"       # Kotlin static analysis, reads detekt.yml
 brew "gradle"       # the Android + KMP build system
-brew "doxygen"      # the C++ API documentation gate
 
 # JavaScript workspace
 brew "node"

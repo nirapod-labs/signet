@@ -8,7 +8,7 @@ Report suspected vulnerabilities privately through GitHub's "Report a vulnerabil
 
 Signet is a non-custodial signing mechanism. Its invariants:
 
-- Private keys are generated in hardware (Secure Enclave / StrongBox / TEE / TPM) and **never leave it**. No surface exposes a private-key export path.
+- Private keys are generated in hardware (Secure Enclave / StrongBox / TEE) and **never leave it**. No surface exposes a private-key export path.
 - No key material crosses a binding boundary: only opaque handles, digests, signatures, public keys, and attestation blobs.
 - The reported security tier is the **achieved** tier, read back from the created key, with the `evidence` behind it. The library never claims a stronger tier than the hardware delivered, and never silently downgrades.
 - Signet **produces** attestation; it never verifies it. Verification is a remote verifier's job, off-device.
