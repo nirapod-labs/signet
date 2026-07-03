@@ -32,9 +32,6 @@ importers:
       react-native-macos:
         specifier: 0.81.8
         version: 0.81.8(@babel/core@7.29.7)(@react-native-community/cli@20.2.0(typescript@5.9.3))(@react-native/metro-config@0.81.6(@babel/core@7.29.7))(@types/react@19.1.17)(react-native@0.81.6(@babel/core@7.29.7)(@react-native-community/cli@20.2.0(typescript@5.9.3))(@react-native/metro-config@0.81.6(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.4))(react@19.1.4)
-      react-native-windows:
-        specifier: 0.81.29
-        version: 0.81.29(@babel/core@7.29.7)(@react-native/metro-config@0.81.6(@babel/core@7.29.7))(@types/react@19.1.17)(react-native@0.81.6(@babel/core@7.29.7)(@react-native-community/cli@20.2.0(typescript@5.9.3))(@react-native/metro-config@0.81.6(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.1.4))(react@19.1.4)(tslib@2.8.1)(typescript@5.9.3)
     devDependencies:
       '@react-native-community/cli':
         specifier: latest

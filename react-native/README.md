@@ -1,6 +1,6 @@
 # react-native/ (react-native-signet)
 
-The React Native binding for Signet: a Nitro module (JSI, Nitrogen codegen) that exposes the Signet contract to TypeScript and forwards to the native cores. It serves iOS, Android, and macOS through Nitro; a Turbo seam is reserved for Windows.
+The React Native binding for Signet: a Nitro module (JSI, Nitrogen codegen) that exposes the Signet contract to TypeScript and forwards to the native cores. It serves iOS, Android, and macOS through Nitro.
 
 ## Layout
 

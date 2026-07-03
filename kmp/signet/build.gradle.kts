@@ -48,7 +48,7 @@ mavenPublishing {
 
     pom {
         name = "Signet"
-        description = "Hardware-backed P-256 signing keys via Secure Enclave, StrongBox/TEE, and TPM."
+        description = "Hardware-backed P-256 signing keys via Secure Enclave and StrongBox/TEE."
         inceptionYear = "2026"
         url = "https://github.com/nirapod-labs/signet/"
         licenses {

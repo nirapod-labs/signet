@@ -1,6 +1,6 @@
 # Signet
 
-Hardware-backed P-256 signing keys for Flutter, React Native, and Kotlin Multiplatform, over Apple Secure Enclave, Android Keystore (StrongBox/TEE), and Windows TPM, with attestation and a normalized security-tier report.
+Hardware-backed P-256 signing keys for Flutter, React Native, and Kotlin Multiplatform, over Apple Secure Enclave and Android Keystore (StrongBox/TEE), with attestation and a normalized security-tier report.
 
 > Status: pre-1.0, in active development. Not yet published to any registry.
 
@@ -17,9 +17,9 @@ Private keys never leave hardware; no export path exists in any surface. The lib
 
 ## Platforms
 
-Signet targets iOS, macOS, and Android across three bindings: Flutter (Pigeon), React Native (Nitro), and Kotlin Multiplatform. Windows (TPM) support is in development.
+Signet targets iOS, macOS, and Android across three bindings: Flutter (Pigeon), React Native (Nitro), and Kotlin Multiplatform.
 
-The native cores live at `apple/` (Swift, Secure Enclave), `android/` (Kotlin, Keystore), and `windows/` (C++, CNG); the bindings at `react-native/`, `flutter/`, and `kmp/` reference them. The cross-language contract is data in `conformance/`.
+The native cores live at `apple/` (Swift, Secure Enclave) and `android/` (Kotlin, Keystore); the bindings at `react-native/`, `flutter/`, and `kmp/` reference them. The cross-language contract is data in `conformance/`.
 
 ## Build
 

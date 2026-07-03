@@ -1,6 +1,6 @@
 # signet
 
-Hardware-backed P-256 signing keys via Secure Enclave, StrongBox/TEE, and TPM.
+Hardware-backed P-256 signing keys via Secure Enclave and StrongBox/TEE.
 
 ## Getting Started
 
