@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Nirapod Labs
 
-import { NitroModules } from 'react-native-nitro-modules'
-import type { Signet as SignetSpec } from './specs/signet.nitro'
-
-/**
- * Signet hybrid object: hardware-backed P-256 signing keys via the native cores.
- */
-export const Signet = NitroModules.createHybridObject<SignetSpec>('Signet')
+// The public surface is the idiomatic API in `./signet`; the Nitro spec in
+// `./specs/signet.nitro` is the code-generated transport and is not re-exported.
+export * from './signet'
