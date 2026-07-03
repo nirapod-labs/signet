@@ -13,21 +13,23 @@ Pod::Spec.new do |s|
   s.license      = package["license"]
   s.authors      = package["author"]
 
-  s.platforms    = { :ios => min_ios_version_supported, :visionos => 1.0 }
+  s.platforms    = { :ios => min_ios_version_supported }
   s.source       = { :git => "https://github.com/nirapod-labs/signet.git", :tag => "#{s.version}" }
 
   s.source_files = [
-    # Implementation (Swift)
-    "ios/**/*.{swift}",
-    # Autolinking/Registration (Objective-C++)
-    "ios/**/*.{m,mm}",
-    # Implementation (C++ objects)
-    "cpp/**/*.{hpp,cpp}",
+    # Implementation (Swift), shared by iOS and macOS under apple/.
+    "apple/**/*.{swift}",
+    # Bridging header and any Objective-C++ registration.
+    "apple/**/*.{h,m,mm}",
   ]
 
   load 'nitrogen/generated/ios/Signet+autolinking.rb'
   add_nitrogen_files(s)
 
+  # The shared Apple core. Linked dev-local by the consumer Podfile
+  # (pod 'SignetAppleCore', :path => '../../apple') until it is a published pod;
+  # see VERIFICATION.md.
+  s.dependency 'SignetAppleCore'
   s.dependency 'React-jsi'
   s.dependency 'React-callinvoker'
   install_modules_dependencies(s)
