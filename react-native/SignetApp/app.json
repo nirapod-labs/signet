@@ -31,8 +31,7 @@
     "platforms": [
       "android",
       "ios",
-      "macos",
-      "windows"
+      "macos"
     ],
     "macos": {
       "bundleIdentifier": "xyz.nirapod.signet.example"

@@ -31,12 +31,6 @@ flutter/build/
 # React Native (nitrogen/generated/ IS committed; build output is not)
 react-native/lib/
 
-# CMake / Windows
-windows/build/
-build-*/
-_deps/
-compile_commands.json
-
 # Distribution / local
 dist/
 .env

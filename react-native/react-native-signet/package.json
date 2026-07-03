@@ -1,7 +1,7 @@
 {
   "name": "react-native-signet",
   "version": "0.1.0-dev",
-  "description": "Hardware-backed P-256 signing keys via Secure Enclave, StrongBox/TEE, and TPM.",
+  "description": "Hardware-backed P-256 signing keys via Secure Enclave and StrongBox/TEE.",
   "main": "./lib/commonjs/index.js",
   "module": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
@@ -18,8 +18,7 @@
     "react-native-signet",
     "nitro",
     "secure-enclave",
-    "strongbox",
-    "tpm"
+    "strongbox"
   ],
   "files": [
     "src",

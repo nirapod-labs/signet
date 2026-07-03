@@ -1,13 +1,4 @@
 {
-  // C/C++: clangd is the language server (compile database from CMake's windows
-  // slice, see .clangd). Keep the Microsoft C/C++ engine off so the two do not fight.
-  "clangd.arguments": ["--background-index", "--clang-tidy", "--header-insertion=never"],
-  "C_Cpp.intelliSenseEngine": "disabled",
-
-  // CMake Tools: the Makefile owns configure; the Windows core builds under windows/build.
-  "cmake.configureOnOpen": false,
-  "cmake.buildDirectory": "${workspaceFolder}/windows/build",
-
   // Swift: load each package under the workspace and use the pinned Xcode toolchain.
   "swift.searchSubfoldersForPackages": true,
   "swift.swiftEnvironmentVariables": {
@@ -16,8 +7,6 @@
 
   // Format on save, each language by its own configured tool.
   "editor.formatOnSave": true,
-  "[c]": { "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd" },
-  "[cpp]": { "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd" },
   "[json]": { "editor.defaultFormatter": "biomejs.biome" },
   "[jsonc]": { "editor.defaultFormatter": "biomejs.biome" },
   "[javascript]": { "editor.defaultFormatter": "biomejs.biome" },
@@ -36,7 +25,6 @@
   "search.exclude": {
     "**/.build": true,
     "**/build": true,
-    "**/_deps": true,
     "**/node_modules": true,
     "**/.gradle": true
   }
