@@ -10,6 +10,7 @@ import 'package:pigeon/pigeon.dart';
     kotlinOptions: KotlinOptions(package: 'xyz.nirapod.signet'),
     swiftOut: 'darwin/Classes/Messages.g.swift',
     dartPackageName: 'signet',
+    copyrightHeader: 'pigeons/copyright.txt',
   ),
 )
 
