@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Nirapod Labs
 
-package xyz.nirapod.signet
+package xyz.nirapod.signet.kmp
 
 /**
  * The Signet key store: hardware-backed P-256 signing over one contract, the
@@ -10,10 +10,14 @@ package xyz.nirapod.signet
  * `androidMain`, the Secure Enclave on `appleMain`, with no key material ever
  * crossing into this layer and no export path anywhere in the surface.
  *
+ * Construction is platform-specific. The Android Keystore requires a `Context`;
+ * an Android caller builds `Signet(context)` and an Apple caller `Signet()`.
+ * Common code receives a constructed instance rather than building one.
+ *
  * The auth-gated `sign` overload (which takes an explicit host-UI context) lands
  * with the biometric surface; this declaration carries the non-gated primitives.
  */
-public expect class Signet() {
+public expect class Signet {
     /**
      * Creates a non-exportable P-256 key at [KeySpec.alias] and returns it with
      * the tier it achieved. A hard [TierPolicy] the platform cannot meet fails
