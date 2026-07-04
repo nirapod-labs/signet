@@ -36,8 +36,6 @@ kotlin {
     iosArm64()
     iosSimulatorArm64()
     macosArm64()
-    watchosArm64()
-    watchosSimulatorArm64()
 
     sourceSets {
         val androidMain by getting {
@@ -50,6 +48,9 @@ kotlin {
                 implementation(libs.androidx.biometric)
                 implementation(libs.kotlinx.coroutines.android)
             }
+        }
+        commonMain.dependencies {
+            implementation(libs.kotlinx.coroutines.core)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

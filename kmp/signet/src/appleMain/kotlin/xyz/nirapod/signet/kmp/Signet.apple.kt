@@ -74,9 +74,32 @@ import platform.Security.kSecAccessControlBiometryCurrentSet
 import platform.Security.kSecAccessControlDevicePasscode
 import platform.Security.kSecAccessControlOr
 import platform.Security.kSecAccessControlPrivateKeyUsage
+import platform.Security.kSecUseAuthenticationContext
+import platform.Security.errSecAuthFailed
+import platform.Security.errSecUserCanceled
+import kotlinx.cinterop.CPointed
+import kotlinx.cinterop.interpretCPointer
+import kotlinx.cinterop.interpretObjCPointerOrNull
+import kotlinx.cinterop.objcPtr
+import platform.Foundation.NSError
+import platform.LocalAuthentication.LAContext
+import platform.LocalAuthentication.LAErrorAppCancel
+import platform.LocalAuthentication.LAErrorAuthenticationFailed
+import platform.LocalAuthentication.LAErrorBiometryLockout
+import platform.LocalAuthentication.LAErrorBiometryNotAvailable
+import platform.LocalAuthentication.LAErrorBiometryNotEnrolled
+import platform.LocalAuthentication.LAErrorDomain
+import platform.LocalAuthentication.LAErrorInvalidContext
+import platform.LocalAuthentication.LAErrorNotInteractive
+import platform.LocalAuthentication.LAErrorPasscodeNotSet
+import platform.LocalAuthentication.LAErrorSystemCancel
+import platform.LocalAuthentication.LAErrorUserCancel
+import kotlin.concurrent.AtomicInt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
- * Apple `actual`, shared across the iOS, macOS, and watchOS targets. Re-implements
+ * Apple `actual`, shared across the iOS and macOS targets. Re-implements
  * the Secure Enclave path over Security.framework in Kotlin/Native, faithful to the
  * reviewed Apple Swift core.
  *
@@ -96,6 +119,13 @@ public actual class Signet {
 
     public actual fun sign(handle: KeyHandle, digest: ByteArray, options: SignOptions): ByteArray =
         store.sign(handle, digest, options)
+
+    public actual suspend fun sign(
+        handle: KeyHandle,
+        digest: ByteArray,
+        authContext: AuthContext,
+        options: SignOptions,
+    ): ByteArray = store.gatedSign(handle, digest, authContext, options)
 
     public actual fun getSecurityTier(handle: KeyHandle): SecurityTierReport =
         store.getSecurityTier(handle)
@@ -119,6 +149,8 @@ private const val TAG_PREFIX = "nirapod.signet."
  * attestation, and tier report.
  */
 internal class SecureEnclaveKeyStore {
+
+    private val signGate = SignGate()
 
     /** Generates a non-exportable P-256 key in the Secure Enclave, gated by [spec]'s policy. */
     fun generateKey(spec: KeySpec): KeyResult {
@@ -202,6 +234,66 @@ internal class SecureEnclaveKeyStore {
         }
     }
 
+    /**
+     * Signs a 32-byte digest with an auth-gated key, off the main thread. The
+     * digest guard precedes the gate. A second gated sign issued while a prompt is
+     * outstanding fails [SignetErrorCode.authInProgress]; [SignGate] serializes the
+     * path.
+     */
+    suspend fun gatedSign(
+        handle: KeyHandle,
+        digest: ByteArray,
+        authContext: AuthContext,
+        options: SignOptions,
+    ): ByteArray {
+        if (digest.size != 32) throw SignetException(SignetErrorCode.invalidArgument)
+        if (!signGate.tryEnter()) throw SignetException(SignetErrorCode.authInProgress)
+        try {
+            return withContext(Dispatchers.Default) {
+                blockingGatedSign(handle, digest, authContext, options)
+            }
+        } finally {
+            signGate.exit()
+        }
+    }
+
+    /**
+     * The blocking gated-sign body. The prompt reaches the Enclave through an
+     * [LAContext] attached to the key fetch.
+     */
+    private fun blockingGatedSign(
+        handle: KeyHandle,
+        digest: ByteArray,
+        authContext: AuthContext,
+        options: SignOptions,
+    ): ByteArray = memScoped {
+        val laContext = LAContext()
+        laContext.localizedReason = gatedReason(authContext)
+        laContext.localizedCancelTitle = authContext.negativeButtonText
+        val key = fetchKey(handle.alias, laContext)
+        defer { CFRelease(key) }
+        val error = alloc<CFErrorRefVar>()
+        val der = SecKeyCreateSignature(
+            key,
+            kSecKeyAlgorithmECDSASignatureDigestX962SHA256,
+            cfData(digest),
+            error.ptr,
+        )
+        if (der == null) {
+            val cfError = error.value
+            val code = mapGatedSignFailure(cfError?.let { interpretObjCPointerOrNull<NSError>(it.rawValue) })
+            cfError?.let { CFRelease(it) }
+            throw SignetException(code)
+        }
+        defer { CFRelease(der) }
+        val derBytes = cfDataToByteArray(der)
+        when (options.encoding) {
+            SignOptions.Encoding.der -> derBytes
+            SignOptions.Encoding.rawRS -> derToRawRS(derBytes)
+                ?: throw SignetException(SignetErrorCode.hardwareError)
+        }
+    }
+
     /** Re-reads the tier of an existing key. `requested` and `authEnforced` are unreadable on Apple and come back null. */
     fun getSecurityTier(handle: KeyHandle): SecurityTierReport {
         if (!exists(handle.alias)) throw SignetException(SignetErrorCode.notFound)
@@ -254,8 +346,8 @@ internal class SecureEnclaveKeyStore {
      * Fetches the private-key reference for an alias. The reference is used
      * in-process and never returned to a caller.
      */
-    private fun MemScope.fetchKey(alias: String): SecKeyRef {
-        val query = cfDictionaryOf(
+    private fun MemScope.fetchKey(alias: String, authContext: LAContext? = null): SecKeyRef {
+        val pairs = mutableListOf<Pair<CFStringRef?, CFTypeRef?>>(
             kSecClass to kSecClassKey,
             kSecAttrApplicationTag to cfData(tag(alias)),
             kSecAttrKeyType to kSecAttrKeyTypeECSECPrimeRandom,
@@ -263,6 +355,11 @@ internal class SecureEnclaveKeyStore {
             kSecUseDataProtectionKeychain to kCFBooleanTrue,
             kSecReturnRef to kCFBooleanTrue,
         )
+        if (authContext != null) {
+            // The dictionary retains the context; the local reference keeps it alive.
+            pairs.add(kSecUseAuthenticationContext to interpretCPointer<CPointed>(authContext.objcPtr()))
+        }
+        val query = cfDictionaryOf(*pairs.toTypedArray())
         val result = alloc<CFTypeRefVar>()
         val status = SecItemCopyMatching(query, result.ptr)
         if (status != errSecSuccess) {
@@ -434,4 +531,48 @@ internal fun mapCreationFailure(code: Long): SignetErrorCode = when (code) {
     errSecInteractionNotAllowed.convert<Long>() -> SignetErrorCode.hardwareError
     errSecDuplicateItem.convert<Long>() -> SignetErrorCode.keyAlreadyExists
     else -> SignetErrorCode.unavailableTier
+}
+
+/** The prompt reason line: the title, with the subtitle appended below when present. */
+internal fun gatedReason(authContext: AuthContext): String {
+    val subtitle = authContext.subtitle
+    return if (subtitle.isNullOrEmpty()) authContext.title else "${authContext.title}\n$subtitle"
+}
+
+/**
+ * Maps a gated-sign failure to the closed error set. A dismissed prompt is
+ * `userCanceled`; a failed authentication (indistinguishably a re-enrollment
+ * invalidation on Apple) is `authFailed`; an unpresentable prompt is
+ * `authContextRequired`. LocalAuthentication and OSStatus codes both map; every
+ * other code is `hardwareError`.
+ */
+internal fun mapGatedSignFailure(error: NSError?): SignetErrorCode {
+    if (error == null) return SignetErrorCode.hardwareError
+    val code: Long = error.code.convert()
+    if (error.domain == LAErrorDomain) {
+        return when (code) {
+            LAErrorUserCancel, LAErrorAppCancel, LAErrorSystemCancel -> SignetErrorCode.userCanceled
+            LAErrorAuthenticationFailed, LAErrorBiometryLockout -> SignetErrorCode.authFailed
+            LAErrorNotInteractive, LAErrorInvalidContext, LAErrorPasscodeNotSet,
+            LAErrorBiometryNotAvailable, LAErrorBiometryNotEnrolled -> SignetErrorCode.authContextRequired
+            else -> SignetErrorCode.hardwareError
+        }
+    }
+    return when (code) {
+        errSecUserCanceled.convert<Long>() -> SignetErrorCode.userCanceled
+        errSecAuthFailed.convert<Long>() -> SignetErrorCode.authFailed
+        errSecInteractionNotAllowed.convert<Long>() -> SignetErrorCode.authContextRequired
+        else -> SignetErrorCode.hardwareError
+    }
+}
+
+/** Serializes auth-gated signing: a second gated sign while a prompt is outstanding is rejected. */
+internal class SignGate {
+    private val busy = AtomicInt(0)
+
+    fun tryEnter(): Boolean = busy.compareAndSet(0, 1)
+
+    fun exit() {
+        busy.value = 0
+    }
 }
