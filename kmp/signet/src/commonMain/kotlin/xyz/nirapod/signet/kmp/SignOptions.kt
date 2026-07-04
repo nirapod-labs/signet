@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Nirapod Labs
 
-package xyz.nirapod.signet
+package xyz.nirapod.signet.kmp
 
 /**
  * Options for [Signet.sign]. `normalizeLowS` is part of the cross-language

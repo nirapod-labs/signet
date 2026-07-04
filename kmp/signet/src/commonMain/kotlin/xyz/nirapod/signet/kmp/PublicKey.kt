@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Nirapod Labs
 
-package xyz.nirapod.signet
+package xyz.nirapod.signet.kmp
 
 /**
  * A public key in one of the pinned wire formats. There is no matching

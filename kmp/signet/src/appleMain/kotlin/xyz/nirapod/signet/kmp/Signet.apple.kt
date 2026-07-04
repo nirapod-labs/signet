@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Nirapod Labs
 
-package xyz.nirapod.signet
+package xyz.nirapod.signet.kmp
 
 /**
  * Apple `actual`, shared across the iOS, macOS, and watchOS targets. The Secure
@@ -10,7 +10,7 @@ package xyz.nirapod.signet
  * `commonMain` compiling. They hold no key material and are unreachable until
  * the Secure Enclave path lands.
  */
-public actual class Signet actual constructor() {
+public actual class Signet {
     public actual fun generateKey(spec: KeySpec): KeyResult = TODO("appleMain: re-implement the Secure Enclave path over Security.framework")
 
     public actual fun getPublicKey(handle: KeyHandle, format: PublicKey.Format): PublicKey = TODO("appleMain")
