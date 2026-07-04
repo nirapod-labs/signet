@@ -21,8 +21,8 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: android-actions/setup-android@v3
-      - name: Build and test the common and JVM targets
+      - name: Build and test the common and Android host targets
         run: |
           cd kmp/signet
           chmod +x gradlew
-          ./gradlew jvmTest
+          ./gradlew testAndroidHostTest
