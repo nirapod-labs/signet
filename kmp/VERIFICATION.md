@@ -37,14 +37,13 @@ Deferred to the device farm (real hardware, not settleable here):
 ## appleMain
 
 The Apple `actual` re-implements the Secure Enclave path over Security.framework
-in Kotlin/Native, faithful to the Apple Swift core. One `actual` serves the iOS,
-macOS, and watchOS targets.
+in Kotlin/Native, faithful to the Apple Swift core. One `actual` serves the iOS
+and macOS targets.
 
 Proven here (compilation and the `SecureEnclaveTest` macOS host suite):
 
-- Every Apple target compiles: `iosArm64`, `iosSimulatorArm64`, `macosArm64`,
-  `watchosArm64`, and `watchosSimulatorArm64`. The Security.framework bindings
-  resolve on each, including the 32-bit `watchosArm64` integer widths.
+- Every Apple target compiles: `iosArm64`, `iosSimulatorArm64`, and `macosArm64`.
+  The Security.framework bindings resolve on each.
 - The signature codec is exact. `derToRawRS` maps a canonical signature, strips
   positive-integer padding, left-pads short components, and rejects malformed DER
   and over-length components. The SPKI wrap prepends the fixed P-256 header.
@@ -64,9 +63,35 @@ Deferred to the device farm (real Secure Enclave hardware):
   `getSecurityTier`), the `secureEnclave` tier with `seTokenPresent` evidence, and
   non-export need the Enclave and a signed app with the keychain entitlement, which
   a CI host and an unsigned test binary do not provide.
-- The iOS and watchOS simulator test lanes stay excluded pending a Kotlin/Native
-  and Xcode toolchain fix. The macOS host lane covers the shared Apple code in the
-  meantime.
+- The iOS simulator test lanes stay excluded pending a Kotlin/Native and Xcode
+  toolchain fix. The macOS host lane covers the shared Apple code in the meantime.
 
-The auth-gated `sign` path (biometric prompt, `LAContext`) is not in this layer;
-it lands with the biometric surface.
+## Auth-gated sign
+
+The gated `sign` presents a biometric prompt and suspends until the user responds.
+The live prompt-and-sign is device-gated by a real enrolled biometric; the host
+suite proves the platform-independent logic.
+
+Proven here (host):
+
+- `SignGate` rejects a concurrent gated sign with `authInProgress` and re-admits
+  after exit (`signGateRejectsConcurrentEntry`).
+- `mapGatedSignFailure` maps the LocalAuthentication codes to the closed error set
+  (`mapGatedSignFailureMapsAuthCodes`); `gatedReason` composes the prompt line.
+- The whole surface compiles: the appleMain gated sign on the Apple targets and the
+  androidMain delegation on the Android host.
+
+Inherited from the cores:
+
+- The Android core drives the gated sign through `BiometricPrompt`; the KMP
+  androidMain delegates to it. The appleMain re-implements the Apple core's
+  LAContext path in Kotlin/Native.
+
+Deferred to the device farm:
+
+- The end-to-end gated sign through `Signet.sign(..., authContext, ...)` with a real
+  prompt: the biometric prompt, the authenticated signature, and the cancel and
+  failure error paths.
+
+watchOS is not a Signet target: its LocalAuthentication has no `localizedReason`
+and no biometry error codes, so it cannot present the gated prompt.

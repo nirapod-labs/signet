@@ -14,8 +14,8 @@ package xyz.nirapod.signet.kmp
  * an Android caller builds `Signet(context)` and an Apple caller `Signet()`.
  * Common code receives a constructed instance rather than building one.
  *
- * The auth-gated `sign` overload (which takes an explicit host-UI context) lands
- * with the biometric surface; this declaration carries the non-gated primitives.
+ * The auth-gated `sign` overload takes an [AuthContext] carrying the platform
+ * host-UI context and prompt; the silent `sign` is for a key with no presence check.
  */
 public expect class Signet {
     /**
@@ -38,6 +38,23 @@ public expect class Signet {
      * the gated overload.
      */
     public fun sign(handle: KeyHandle, digest: ByteArray, options: SignOptions = SignOptions()): ByteArray
+
+    /**
+     * Signs a 32-byte digest with an auth-gated key, driving the platform
+     * biometric prompt through [authContext] and suspending until the user
+     * responds. A digest that is not exactly 32 bytes fails with
+     * [SignetErrorCode.invalidArgument] before the prompt. Auth-gated signing is
+     * serialized: a second call while a prompt is still outstanding fails with
+     * [SignetErrorCode.authInProgress]. A dismissed prompt is
+     * [SignetErrorCode.userCanceled] and a failed authentication is
+     * [SignetErrorCode.authFailed].
+     */
+    public suspend fun sign(
+        handle: KeyHandle,
+        digest: ByteArray,
+        authContext: AuthContext,
+        options: SignOptions = SignOptions(),
+    ): ByteArray
 
     /**
      * Re-reads the tier report for a live or invalidated key. Never throws on an

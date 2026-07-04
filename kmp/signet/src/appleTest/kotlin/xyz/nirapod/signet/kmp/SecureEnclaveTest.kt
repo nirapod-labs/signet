@@ -22,9 +22,15 @@ import platform.Security.kSecAccessControlPrivateKeyUsage
 import platform.Security.kSecAttrKeySizeInBits
 import platform.Security.kSecAttrKeyType
 import platform.Security.kSecAttrKeyTypeECSECPrimeRandom
+import platform.Foundation.NSError
+import platform.LocalAuthentication.LAErrorAuthenticationFailed
+import platform.LocalAuthentication.LAErrorBiometryNotEnrolled
+import platform.LocalAuthentication.LAErrorDomain
+import platform.LocalAuthentication.LAErrorUserCancel
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
@@ -159,5 +165,41 @@ class SecureEnclaveTest {
     @Test
     fun cfDataHandlesEmptyInput() = memScoped {
         assertEquals(0, cfDataToByteArray(cfData(ByteArray(0))).size)
+    }
+
+    @Test
+    fun gatedReasonAppendsSubtitle() {
+        assertEquals("Sign in", gatedReason(AuthContext("Sign in", AuthRequirement.biometricOnly)))
+        assertEquals(
+            "Sign in\nApprove the transfer",
+            gatedReason(AuthContext("Sign in", AuthRequirement.biometricOnly, "Approve the transfer")),
+        )
+    }
+
+    @Test
+    fun signGateRejectsConcurrentEntry() {
+        val gate = SignGate()
+        assertTrue(gate.tryEnter())
+        assertFalse(gate.tryEnter())
+        gate.exit()
+        assertTrue(gate.tryEnter())
+        gate.exit()
+    }
+
+    @Test
+    fun mapGatedSignFailureMapsAuthCodes() {
+        assertEquals(
+            SignetErrorCode.userCanceled,
+            mapGatedSignFailure(NSError(domain = LAErrorDomain, code = LAErrorUserCancel, userInfo = null)),
+        )
+        assertEquals(
+            SignetErrorCode.authFailed,
+            mapGatedSignFailure(NSError(domain = LAErrorDomain, code = LAErrorAuthenticationFailed, userInfo = null)),
+        )
+        assertEquals(
+            SignetErrorCode.authContextRequired,
+            mapGatedSignFailure(NSError(domain = LAErrorDomain, code = LAErrorBiometryNotEnrolled, userInfo = null)),
+        )
+        assertEquals(SignetErrorCode.hardwareError, mapGatedSignFailure(null))
     }
 }
