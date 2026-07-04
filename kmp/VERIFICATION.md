@@ -34,7 +34,39 @@ Deferred to the device farm (real hardware, not settleable here):
 - The `strongBox` tier and a real `androidKeyChain` attestation chain, which need
   StrongBox and attested hardware.
 
-## appleMain and iosMain
+## appleMain
 
-Placeholder actuals. The Secure Enclave path over Security.framework lands with
-the Apple work.
+The Apple `actual` re-implements the Secure Enclave path over Security.framework
+in Kotlin/Native, faithful to the Apple Swift core. One `actual` serves the iOS,
+macOS, and watchOS targets.
+
+Proven here (compilation and the `SecureEnclaveTest` macOS host suite):
+
+- Every Apple target compiles: `iosArm64`, `iosSimulatorArm64`, `macosArm64`,
+  `watchosArm64`, and `watchosSimulatorArm64`. The Security.framework bindings
+  resolve on each, including the 32-bit `watchosArm64` integer widths.
+- The signature codec is exact. `derToRawRS` maps a canonical signature, strips
+  positive-integer padding, left-pads short components, and rejects malformed DER
+  and over-length components. The SPKI wrap prepends the fixed P-256 header.
+- The policy mapping is exact. The access-control flags and the reported
+  `AuthClass` match each `AuthRequirement`, and the creation-failure codes map to
+  the closed error set.
+- The Security.framework binding links and signs. A transient host P-256 key runs
+  the real `SecKeyCreateSignature` path through the CFData bridging to a 64-byte
+  `r || s`, and exports a 65-byte X9.63 public key. This is a host software key,
+  not the Enclave, and it proves the binding, the algorithm selector, and the CF
+  memory handling against real Security.framework.
+
+Deferred to the device farm (real Secure Enclave hardware):
+
+- End-to-end generate, sign, tier, and attestation through `Signet()` on a device.
+  Enclave key creation, keychain persistence (`exists`, `delete`,
+  `getSecurityTier`), the `secureEnclave` tier with `seTokenPresent` evidence, and
+  non-export need the Enclave and a signed app with the keychain entitlement, which
+  a CI host and an unsigned test binary do not provide.
+- The iOS and watchOS simulator test lanes stay excluded pending a Kotlin/Native
+  and Xcode toolchain fix. The macOS host lane covers the shared Apple code in the
+  meantime.
+
+The auth-gated `sign` path (biometric prompt, `LAContext`) is not in this layer;
+it lands with the biometric surface.
