@@ -13,6 +13,11 @@ group = "xyz.nirapod"
 version = "0.1.0-SNAPSHOT"
 
 kotlin {
+    // Suppress the KT-61573 Beta notice for the intentional expect/actual classes.
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     androidLibrary {
         namespace = "xyz.nirapod.signet"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -35,6 +40,17 @@ kotlin {
     watchosSimulatorArm64()
 
     sourceSets {
+        val androidMain by getting {
+            // Compile the android/ core in-module. commonMain owns the KMP contract
+            // types under xyz.nirapod.signet.kmp; the core keeps its own
+            // xyz.nirapod.signet types in a separate package, and androidMain
+            // translates between them.
+            kotlin.srcDir("../../android/src/main/kotlin")
+            dependencies {
+                implementation(libs.androidx.biometric)
+                implementation(libs.kotlinx.coroutines.android)
+            }
+        }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
