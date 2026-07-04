@@ -40,6 +40,15 @@ public actual class Signet(context: Context) {
     public actual fun sign(handle: KeyHandle, digest: ByteArray, options: SignOptions): ByteArray =
         translatingErrors { signer.sign(CoreKeyHandle(handle.alias), digest, options.toCore()) }
 
+    public actual suspend fun sign(
+        handle: KeyHandle,
+        digest: ByteArray,
+        authContext: AuthContext,
+        options: SignOptions,
+    ): ByteArray = translatingErrors {
+        signer.sign(CoreKeyHandle(handle.alias), digest, authContext.core, options.toCore())
+    }
+
     public actual fun getSecurityTier(handle: KeyHandle): SecurityTierReport =
         translatingErrors { signer.getSecurityTier(CoreKeyHandle(handle.alias)).toKmp() }
 

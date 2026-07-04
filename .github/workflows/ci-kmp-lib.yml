@@ -39,4 +39,4 @@ jobs:
         run: |
           cd kmp/signet
           chmod +x gradlew
-          ./gradlew compileKotlinIosArm64 compileKotlinIosSimulatorArm64 compileKotlinMacosArm64 compileKotlinWatchosArm64 compileKotlinWatchosSimulatorArm64 macosArm64Test
+          ./gradlew compileKotlinIosArm64 compileKotlinIosSimulatorArm64 compileKotlinMacosArm64 macosArm64Test

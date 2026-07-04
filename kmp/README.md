@@ -2,7 +2,7 @@
 
 `signet` is the Kotlin Multiplatform binding for Signet. It exposes hardware-backed
 P-256 signing keys to KMP consumers on Android (Keystore, StrongBox or TEE) and Apple
-platforms (Secure Enclave) on iOS, macOS, and watchOS.
+platforms (Secure Enclave) on iOS and macOS.
 
 ## Layout
 
@@ -21,5 +21,5 @@ cd signet
 
 ## Targets
 
-`androidLibrary`, `iosArm64`, `iosSimulatorArm64`, `macosArm64`, `watchosArm64`,
-`watchosSimulatorArm64`. Coordinates `xyz.nirapod:signet`.
+`androidLibrary`, `iosArm64`, `iosSimulatorArm64`, `macosArm64`. Coordinates
+`xyz.nirapod:signet`.
