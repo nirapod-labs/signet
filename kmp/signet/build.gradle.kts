@@ -13,8 +13,6 @@ group = "xyz.nirapod"
 version = "0.1.0-SNAPSHOT"
 
 kotlin {
-    jvm() // desktop
-
     androidLibrary {
         namespace = "xyz.nirapod.signet"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -32,6 +30,9 @@ kotlin {
 
     iosArm64()
     iosSimulatorArm64()
+    macosArm64()
+    watchosArm64()
+    watchosSimulatorArm64()
 
     sourceSets {
         commonTest.dependencies {
