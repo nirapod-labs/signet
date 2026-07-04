@@ -95,3 +95,26 @@ Deferred to the device farm:
 
 watchOS is not a Signet target: its LocalAuthentication has no `localizedReason`
 and no biometry error codes, so it cannot present the gated prompt.
+
+## Conformance
+
+KMP conformance is proven here by the binding's own suites, the Dart and RN
+precedent. `ContractTest` (commonTest) asserts the closed error set against
+`conformance/errors.json` (thirteen names, the `userCanceled` spelling), the tier
+partial order (`tpm` not below `tee`, `software` below every hardware class), the
+closed-set sizes, and the shape defaults. `ConvertersTest` (androidHostTest) checks
+the android-core translation both directions.
+
+Populating `conformance/vectors.json` with golden signature and attestation vectors
+and flipping `conformance/behaviors.yaml` from `pending` to `verified` across the
+Dart, TypeScript, Kotlin, and Swift runners is the cross-language completion, which
+depends on all four bindings. The polyglot kotlin runner stays a pending-consistent
+stub until then; no behavior is answered `pass` while it is `pending`.
+
+## Example
+
+`kmp/SignetApp` composite-builds this library and drives its non-gated surface from
+`commonMain` (`SignetDemo`: generate, public key, sign, tier, attestation, delete).
+It compiles against `iosArm64`, `iosSimulatorArm64`, and `macosArm64`, proving the
+contract is importable and usable from a separate Kotlin Multiplatform project. An
+on-device host and an Android application target are future work.

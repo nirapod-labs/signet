@@ -4,10 +4,12 @@ on:
     branches: [main]
     paths:
       - "kmp/signet/**"
+      - "kmp/SignetApp/**"
       - ".github/workflows/ci-kmp-lib.yml"
   pull_request:
     paths:
       - "kmp/signet/**"
+      - "kmp/SignetApp/**"
       - ".github/workflows/ci-kmp-lib.yml"
 permissions:
   contents: read
@@ -40,3 +42,8 @@ jobs:
           cd kmp/signet
           chmod +x gradlew
           ./gradlew compileKotlinIosArm64 compileKotlinIosSimulatorArm64 compileKotlinMacosArm64 macosArm64Test
+      - name: Compile the example against the library
+        run: |
+          cd kmp/SignetApp
+          chmod +x gradlew
+          ./gradlew compileKotlinMacosArm64
