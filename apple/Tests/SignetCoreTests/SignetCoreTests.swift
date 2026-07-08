@@ -8,37 +8,11 @@ import Testing
 
 @Test func versionIsSet() {
     #expect(!Signet.version.isEmpty)
-    #expect(Signet.platformTag() == "apple")
-}
-
-@Test func secureEnclaveMeetsEveryPolicyFloor() {
-    // Secure Enclave is discreteSecure (top class) and Apple's strongest level;
-    // every policy is met on the success path.
-    let se = SecurityLevel.secureEnclave
-    #expect(TierPolicy.strongest.isMet(by: se, platformStrongest: se))
-    #expect(TierPolicy.atLeast(.discreteSecure).isMet(by: se, platformStrongest: se))
-    #expect(TierPolicy.atLeast(.trustedEnvironment).isMet(by: se, platformStrongest: se))
-    #expect(TierPolicy.bestEffort.isMet(by: se, platformStrongest: se))
-}
-
-@Test func meetsFloorTracksThePartialOrder() {
-    let se = SecurityLevel.secureEnclave
-    // A trustedEnvironment floor is met by a discreteSecure level, not the reverse.
-    #expect(TierPolicy.atLeast(.trustedEnvironment).isMet(by: .tee, platformStrongest: se))
-    #expect(!TierPolicy.atLeast(.discreteSecure).isMet(by: .tee, platformStrongest: se))
-    // strongest is met only by the platform's strongest level.
-    #expect(!TierPolicy.strongest.isMet(by: .tee, platformStrongest: se))
-    // bestEffort flags a below-class result: false for tee and software.
-    #expect(!TierPolicy.bestEffort.isMet(by: .tee, platformStrongest: se))
-    #expect(!TierPolicy.bestEffort.isMet(by: .software, platformStrongest: se))
 }
 
 @Test func hardwareClassMapping() {
-    #expect(SecurityLevel.software.hardwareClass == nil)
-    #expect(SecurityLevel.tee.hardwareClass == .trustedEnvironment)
+    // Secure Enclave is the only Apple level and maps to the top class.
     #expect(SecurityLevel.secureEnclave.hardwareClass == .discreteSecure)
-    #expect(SecurityLevel.strongBox.hardwareClass == .discreteSecure)
-    #expect(SecurityLevel.tpm.hardwareClass == .discreteSecure)
 }
 
 @Test func creationFailureMappingIsHonest() {
@@ -46,7 +20,7 @@ import Testing
     #expect(SecureEnclaveKeyStore.mapCreationFailure(code: Int(errSecInteractionNotAllowed)) == .hardwareError)
     // A racing duplicate is reported as an existing alias, not a tier absence.
     #expect(SecureEnclaveKeyStore.mapCreationFailure(code: Int(errSecDuplicateItem)) == .keyAlreadyExists)
-    // Any other creation failure fails unavailableTier; never software.
+    // Any other creation failure fails closed with unavailableTier; never a software key.
     #expect(SecureEnclaveKeyStore.mapCreationFailure(code: Int(errSecParam)) == .unavailableTier)
     #expect(SecureEnclaveKeyStore.mapCreationFailure(code: 0) == .unavailableTier)
 }
@@ -126,19 +100,18 @@ import Testing
     #expect(result.format == .none)
     #expect(result.chain.isEmpty)
     #expect(result.schemaVersion == 1)
-    #expect(AttestationResult.Format.androidKeyChain.rawValue == "androidKeyChain")
 }
 
 @Test func securityTierReportSeparatesNilFromAuthClassNone() {
     // nil is unobservable at re-read; AuthClass.none is a key with no gate.
     let reread = SecurityTierReport(
-        achieved: .secureEnclave, requested: nil, meetsFloor: true,
+        achieved: .secureEnclave, requested: nil,
         evidence: .seTokenPresent, authEnforced: nil, invalidated: false
     )
     #expect(reread.requested == nil)
     #expect(reread.authEnforced == nil)
     let created = SecurityTierReport(
-        achieved: .secureEnclave, requested: TierPolicy.strongest, meetsFloor: true,
+        achieved: .secureEnclave, requested: TierPolicy.strongest,
         evidence: .seTokenPresent, authEnforced: AuthClass.none, invalidated: false
     )
     #expect(created.requested == TierPolicy.strongest)

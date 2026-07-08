@@ -11,20 +11,15 @@ public enum class SecurityLevel {
     secureEnclave,
     strongBox,
     tee,
-    tpm,
-    software,
 }
 
 /**
- * How the achieved [SecurityLevel] was determined. Only `attested` is
- * cryptographic proof; every other value is an on-device self-report.
+ * How the achieved [SecurityLevel] was determined. Each value is an on-device
+ * self-report from the platform key store.
  */
 public enum class TierEvidence {
-    attested,
     keyInfoReadback,
     seTokenPresent,
-    inferred,
-    selfReportUnverified,
 }
 
 /**
@@ -40,23 +35,19 @@ public enum class AuthClass {
 
 /**
  * A class in the tier partial order. `atLeast` selects by class: `discreteSecure`
- * covers Secure Enclave, StrongBox, and TPM, and outranks `trustedEnvironment`.
+ * covers Secure Enclave and StrongBox, and outranks `trustedEnvironment`.
  */
 public enum class HardwareClass(internal val rank: Int) {
     discreteSecure(0),
     trustedEnvironment(1),
 }
 
-/**
- * The partial-order class a level belongs to, or null for `software`, which is
- * below every hardware class.
- */
-internal val SecurityLevel.hardwareClass: HardwareClass?
+/** The partial-order class a level belongs to. */
+internal val SecurityLevel.hardwareClass: HardwareClass
     get() = when (this) {
-        SecurityLevel.secureEnclave, SecurityLevel.strongBox, SecurityLevel.tpm ->
+        SecurityLevel.secureEnclave, SecurityLevel.strongBox ->
             HardwareClass.discreteSecure
         SecurityLevel.tee -> HardwareClass.trustedEnvironment
-        SecurityLevel.software -> null
     }
 
 /**
@@ -64,31 +55,23 @@ internal val SecurityLevel.hardwareClass: HardwareClass?
  * [SecurityLevel]; the achieved level is reported in [SecurityTierReport].
  */
 public sealed class TierPolicy {
-    /** The device's best hardware tier. Fails `unavailableTier` if none exists; never software. */
+    /** The device's best hardware tier. Fails `unavailableTier` if none exists. */
     public object Strongest : TierPolicy()
 
     /** A hard floor by class. Fails `unavailableTier` below the class. */
     public data class AtLeast(val hardwareClass: HardwareClass) : TierPolicy()
 
-    /** Never fails on tier; may return a weaker level with `meetsFloor == false` and honest evidence. */
-    public object BestEffort : TierPolicy()
-
     /** Whether [achieved] satisfies this policy's floor, per the partial order. */
     internal fun isMet(achieved: SecurityLevel, platformStrongest: SecurityLevel): Boolean =
         when (this) {
             Strongest -> achieved == platformStrongest
-            is AtLeast -> {
-                val achievedClass = achieved.hardwareClass
-                achievedClass != null && achievedClass.rank <= hardwareClass.rank
-            }
-            BestEffort -> achieved.hardwareClass == HardwareClass.discreteSecure
+            is AtLeast -> achieved.hardwareClass.rank <= hardwareClass.rank
         }
 }
 
 /**
- * One report shape everywhere. `achieved` is read back from the created key,
- * `meetsFloor` derives from the tier partial order, and `authEnforced` is
- * derived from the created key.
+ * One report shape everywhere. `achieved` is read back from the created key and
+ * `authEnforced` is derived from the created key.
  *
  * `requested` and `authEnforced` are optional. `generateKey` populates both; a
  * `getSecurityTier` re-read leaves `requested` null (the policy is not stored
@@ -99,7 +82,6 @@ public sealed class TierPolicy {
 public data class SecurityTierReport(
     val achieved: SecurityLevel,
     val requested: TierPolicy?,
-    val meetsFloor: Boolean,
     val evidence: TierEvidence,
     val authEnforced: AuthClass?,
     val invalidated: Boolean,

@@ -1,5 +1,5 @@
 name: signet
-description: "Hardware-backed P-256 signing keys via the Apple Secure Enclave and Android Keystore (StrongBox/TEE)."
+description: "Hardware-only P-256 signing keys held in dedicated secure hardware: the Apple Secure Enclave, or the Android StrongBox or TEE-backed Keystore."
 version: 0.1.0-dev
 homepage: https://github.com/nirapod-labs/signet
 repository: https://github.com/nirapod-labs/signet

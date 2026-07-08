@@ -74,6 +74,20 @@ if (!('signatureVectors' in vectors)) fail('vectors.json is missing signatureVec
 const forbidden = /private[_-]?key|secret[_-]?key|export[_-]?key|rawprivate|privatebytes/i
 if (forbidden.test(JSON.stringify(shapes))) fail('shapes.json can express a private-key field')
 
+// Hardware-only regression guard: the contract admits no software or tpm tier,
+// no retired evidence value, and no retired tier-floor vocabulary (bestEffort
+// policy, meetsFloor field).
+const removedLevels = new Set(['tpm', 'software'])
+for (const value of securityLevel.securityLevel?.values ?? [])
+  if (removedLevels.has(value)) fail(`security-level.json names removed tier "${value}"`)
+const removedEvidence = new Set(['attested', 'inferred', 'selfReportUnverified'])
+for (const value of securityLevel.tierEvidence?.values ?? [])
+  if (removedEvidence.has(value)) fail(`security-level.json names removed evidence "${value}"`)
+if (shapes.SecurityTierReport && 'meetsFloor' in shapes.SecurityTierReport)
+  fail('shapes.json still carries the removed meetsFloor field')
+if (shapes.TierPolicy?.variants && 'bestEffort' in shapes.TierPolicy.variants)
+  fail('shapes.json still carries the removed bestEffort policy')
+
 // Four independent implementations of the same stdio protocol.
 const runners = [
   { name: 'typescript', cmd: 'node', args: [join(ROOT, 'runners/typescript/runner.mjs')] },

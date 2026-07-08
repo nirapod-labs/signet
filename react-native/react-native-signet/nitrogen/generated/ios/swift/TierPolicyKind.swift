@@ -21,8 +21,6 @@ public extension TierPolicyKind {
         self = .strongest
       case "atLeast":
         self = .atleast
-      case "bestEffort":
-        self = .besteffort
       default:
         return nil
     }
@@ -37,8 +35,6 @@ public extension TierPolicyKind {
         return "strongest"
       case .atleast:
         return "atLeast"
-      case .besteffort:
-        return "bestEffort"
     }
   }
 }

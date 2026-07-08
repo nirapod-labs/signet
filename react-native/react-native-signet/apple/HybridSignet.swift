@@ -155,8 +155,6 @@ private func coreKeySpec(_ spec: KeySpec) throws -> SignetCore.KeySpec {
   case "atLeast":
     guard let atLeastClass = spec.atLeastClass else { throw SignetError.invalidArgument }
     policy = .atLeast(coreHardwareClass(atLeastClass))
-  case "bestEffort":
-    policy = .bestEffort
   default:
     throw SignetError.invalidArgument
   }
@@ -205,7 +203,6 @@ private func nitroReport(_ report: SignetCore.SecurityTierReport) -> SecurityTie
     achieved: SecurityLevel(fromString: report.achieved.rawValue)!,
     requestedKind: requestedKind,
     requestedAtLeastClass: requestedAtLeastClass,
-    meetsFloor: report.meetsFloor,
     evidence: TierEvidence(fromString: report.evidence.rawValue)!,
     authEnforced: report.authEnforced.map { AuthClass(fromString: $0.rawValue)! },
     invalidated: report.invalidated,
@@ -221,8 +218,6 @@ private func nitroRequested(_ policy: TierPolicy?) -> (TierPolicyKind?, Hardware
     return (TierPolicyKind(fromString: "strongest")!, nil)
   case .atLeast(let hardwareClass)?:
     return (TierPolicyKind(fromString: "atLeast")!, HardwareClass(fromString: hardwareClass.rawValue)!)
-  case .bestEffort?:
-    return (TierPolicyKind(fromString: "bestEffort")!, nil)
   }
 }
 
@@ -236,7 +231,6 @@ private func nitroFormat(_ value: PublicKey.Format) -> PublicKeyFormat {
 private func nitroAttestation(_ result: SignetCore.AttestationResult) throws -> AttestationResult {
   let format: AttestationFormat
   switch result.format {
-  case .androidKeyChain: format = AttestationFormat(fromString: "androidKeyChain")!
   case .none: format = AttestationFormat(fromString: "none")!
   }
   let chain = result.chain.isEmpty ? nil : try result.chain.map { try ArrayBuffer.copy(data: $0) }

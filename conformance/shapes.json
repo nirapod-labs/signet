@@ -3,7 +3,6 @@
   "SecurityTierReport": {
     "achieved": "SecurityLevel",
     "requested": "TierPolicy? (nil on a getSecurityTier re-read; the policy is not stored with the key)",
-    "meetsFloor": "bool",
     "evidence": "TierEvidence",
     "authEnforced": "AuthClass? (nil on a re-read where the platform has no created access-control read-back, e.g. Apple)",
     "invalidated": "bool",
@@ -26,16 +25,15 @@
   },
   "TierPolicy": {
     "variants": {
-      "strongest": "Device's best hardware tier; fails unavailableTier if no hardware is available (never returns software). Default.",
-      "atLeast(HardwareClass)": "Hard floor by class; fails unavailableTier below the class.",
-      "bestEffort": "Never fails on tier; may return tee/software with meetsFloor=false and honest evidence (the only variant that returns software)."
+      "strongest": "Device's best hardware tier; fails unavailableTier if no secure hardware is available. Default.",
+      "atLeast(HardwareClass)": "Hard floor by class; fails unavailableTier below the class."
     },
     "default": "strongest",
     "note": "Selection is by class, never a concrete SecurityLevel; the achieved level is in SecurityTierReport.achieved."
   },
   "HardwareClass": {
     "values": ["discreteSecure", "trustedEnvironment"],
-    "note": "The atLeast(...) floor. discreteSecure = {secureEnclave, strongBox, tpm}; trustedEnvironment = {tee}. Matches security-level.json partialOrder classes."
+    "note": "The atLeast(...) floor. discreteSecure = {secureEnclave, strongBox}; trustedEnvironment = {tee}. Matches security-level.json partialOrder classes."
   },
   "AccessControlPolicy": {
     "authRequirement": ["none", "biometricOnly", "biometricOrDeviceCredential"],
@@ -52,7 +50,7 @@
     "bytes": "bytes"
   },
   "primitives": {
-    "generateKey": "(KeySpec) -> (KeyHandle, SecurityTierReport). Tier per KeySpec.tierPolicy (strongest/atLeast fail unavailableTier below floor; bestEffort never fails on tier); existing alias FAILS keyAlreadyExists.",
+    "generateKey": "(KeySpec) -> (KeyHandle, SecurityTierReport). Tier per KeySpec.tierPolicy (strongest and atLeast fail unavailableTier when the requested floor is not met); existing alias FAILS keyAlreadyExists.",
     "sign": "(KeyHandle, digest[32], SignOptions?) -> Signature. Async; host-UI biometric callback; a second concurrent auth-gated sign is rejected.",
     "getPublicKey": "(KeyHandle) -> PublicKey",
     "getAttestation": "(KeyHandle) -> AttestationResult. No call-time challenge (bound at generateKey). Apple SE returns format=none for any key state; a missing alias raises notFound.",

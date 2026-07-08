@@ -6,7 +6,6 @@ package org.nirapod.signet.kmp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -16,13 +15,13 @@ import kotlin.test.assertTrue
  */
 class ContractTest {
     @Test
-    fun securityLevelIsAClosedSetOfFive() {
-        assertEquals(5, SecurityLevel.entries.size)
+    fun securityLevelIsAClosedSetOfThree() {
+        assertEquals(3, SecurityLevel.entries.size)
     }
 
     @Test
-    fun tierEvidenceIsAClosedSetOfFive() {
-        assertEquals(5, TierEvidence.entries.size)
+    fun tierEvidenceIsAClosedSetOfTwo() {
+        assertEquals(2, TierEvidence.entries.size)
     }
 
     @Test
@@ -38,20 +37,12 @@ class ContractTest {
     }
 
     @Test
-    fun tpmIsDiscreteSecureAndNotBelowTee() {
-        assertEquals(HardwareClass.discreteSecure, SecurityLevel.tpm.hardwareClass)
+    fun strongBoxIsDiscreteSecureAndNotBelowTee() {
+        assertEquals(HardwareClass.discreteSecure, SecurityLevel.strongBox.hardwareClass)
         assertEquals(HardwareClass.trustedEnvironment, SecurityLevel.tee.hardwareClass)
         val discreteFloor = TierPolicy.AtLeast(HardwareClass.discreteSecure)
-        assertTrue(discreteFloor.isMet(SecurityLevel.tpm, platformStrongest = SecurityLevel.tpm))
-        assertFalse(discreteFloor.isMet(SecurityLevel.tee, platformStrongest = SecurityLevel.tpm))
-    }
-
-    @Test
-    fun softwareIsBelowEveryHardwareClass() {
-        assertNull(SecurityLevel.software.hardwareClass)
-        val teeFloor = TierPolicy.AtLeast(HardwareClass.trustedEnvironment)
-        assertFalse(teeFloor.isMet(SecurityLevel.software, platformStrongest = SecurityLevel.tee))
-        assertTrue(teeFloor.isMet(SecurityLevel.tee, platformStrongest = SecurityLevel.tee))
+        assertTrue(discreteFloor.isMet(SecurityLevel.strongBox, platformStrongest = SecurityLevel.strongBox))
+        assertFalse(discreteFloor.isMet(SecurityLevel.tee, platformStrongest = SecurityLevel.strongBox))
     }
 
     @Test
@@ -65,7 +56,6 @@ class ContractTest {
         val report = SecurityTierReport(
             achieved = SecurityLevel.strongBox,
             requested = TierPolicy.Strongest,
-            meetsFloor = true,
             evidence = TierEvidence.keyInfoReadback,
             authEnforced = AuthClass.biometricOnly,
             invalidated = false,

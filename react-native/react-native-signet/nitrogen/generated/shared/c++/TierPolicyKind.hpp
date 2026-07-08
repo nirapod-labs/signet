@@ -31,7 +31,6 @@ namespace margelo::nitro::signet {
   enum class TierPolicyKind {
     STRONGEST      SWIFT_NAME(strongest) = 0,
     ATLEAST      SWIFT_NAME(atleast) = 1,
-    BESTEFFORT      SWIFT_NAME(besteffort) = 2,
   } CLOSED_ENUM;
 
 } // namespace margelo::nitro::signet
@@ -46,7 +45,6 @@ namespace margelo::nitro {
       switch (hashString(unionValue.c_str(), unionValue.size())) {
         case hashString("strongest"): return margelo::nitro::signet::TierPolicyKind::STRONGEST;
         case hashString("atLeast"): return margelo::nitro::signet::TierPolicyKind::ATLEAST;
-        case hashString("bestEffort"): return margelo::nitro::signet::TierPolicyKind::BESTEFFORT;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum TierPolicyKind - invalid value!");
       }
@@ -55,7 +53,6 @@ namespace margelo::nitro {
       switch (arg) {
         case margelo::nitro::signet::TierPolicyKind::STRONGEST: return JSIConverter<std::string>::toJSI(runtime, "strongest");
         case margelo::nitro::signet::TierPolicyKind::ATLEAST: return JSIConverter<std::string>::toJSI(runtime, "atLeast");
-        case margelo::nitro::signet::TierPolicyKind::BESTEFFORT: return JSIConverter<std::string>::toJSI(runtime, "bestEffort");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert TierPolicyKind to JS - invalid value: "
                                     + std::to_string(static_cast<int>(arg)) + "!");
@@ -69,7 +66,6 @@ namespace margelo::nitro {
       switch (hashString(unionValue.c_str(), unionValue.size())) {
         case hashString("strongest"):
         case hashString("atLeast"):
-        case hashString("bestEffort"):
           return true;
         default:
           return false;

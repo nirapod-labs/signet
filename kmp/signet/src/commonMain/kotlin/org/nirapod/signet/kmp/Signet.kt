@@ -20,10 +20,9 @@ package org.nirapod.signet.kmp
 public expect class Signet {
     /**
      * Creates a non-exportable P-256 key at [KeySpec.alias] and returns it with
-     * the tier it achieved. A hard [TierPolicy] the platform cannot meet fails
-     * with [SignetErrorCode.unavailableTier]; [TierPolicy.BestEffort] never
-     * fails on tier and reports `meetsFloor == false`. An existing alias fails
-     * with [SignetErrorCode.keyAlreadyExists]; generation never silently overwrites.
+     * the tier it achieved. A [TierPolicy] the platform cannot meet fails closed
+     * with [SignetErrorCode.unavailableTier]. An existing alias fails with
+     * [SignetErrorCode.keyAlreadyExists]; generation never silently overwrites.
      */
     public fun generateKey(spec: KeySpec): KeyResult
 

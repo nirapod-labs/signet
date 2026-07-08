@@ -186,7 +186,6 @@ private fun coreTierPolicy(
     TierPolicyKindWire.AT_LEAST -> TierPolicy.AtLeast(
         (atLeastClass ?: throw SignetException(SignetErrorCode.invalidArgument)).toCore(),
     )
-    TierPolicyKindWire.BEST_EFFORT -> TierPolicy.BestEffort
 }
 
 private fun AuthRequirementWire.toCore(): AuthRequirement = when (this) {
@@ -228,7 +227,6 @@ private fun SecurityTierReport.toWire(): SecurityTierReportWire {
         achieved = achieved.toWire(),
         requestedKind = requestedKind,
         requestedAtLeastClass = requestedAtLeastClass,
-        meetsFloor = meetsFloor,
         evidence = evidence.toWire(),
         authEnforced = authEnforced?.toWire(),
         invalidated = invalidated,
@@ -242,7 +240,6 @@ private fun requestedToWire(
     null -> null to null
     TierPolicy.Strongest -> TierPolicyKindWire.STRONGEST to null
     is TierPolicy.AtLeast -> TierPolicyKindWire.AT_LEAST to policy.hardwareClass.toWire()
-    TierPolicy.BestEffort -> TierPolicyKindWire.BEST_EFFORT to null
 }
 
 private fun AttestationResult.toWire(): AttestationResultWire = AttestationResultWire(
@@ -255,19 +252,12 @@ private fun AttestationResult.toWire(): AttestationResultWire = AttestationResul
 )
 
 private fun SecurityLevel.toWire(): SecurityLevelWire = when (this) {
-    SecurityLevel.secureEnclave -> SecurityLevelWire.SECURE_ENCLAVE
     SecurityLevel.strongBox -> SecurityLevelWire.STRONG_BOX
     SecurityLevel.tee -> SecurityLevelWire.TEE
-    SecurityLevel.tpm -> SecurityLevelWire.TPM
-    SecurityLevel.software -> SecurityLevelWire.SOFTWARE
 }
 
 private fun TierEvidence.toWire(): TierEvidenceWire = when (this) {
-    TierEvidence.attested -> TierEvidenceWire.ATTESTED
     TierEvidence.keyInfoReadback -> TierEvidenceWire.KEY_INFO_READBACK
-    TierEvidence.seTokenPresent -> TierEvidenceWire.SE_TOKEN_PRESENT
-    TierEvidence.inferred -> TierEvidenceWire.INFERRED
-    TierEvidence.selfReportUnverified -> TierEvidenceWire.SELF_REPORT_UNVERIFIED
 }
 
 private fun AuthClass.toWire(): AuthClassWire = when (this) {

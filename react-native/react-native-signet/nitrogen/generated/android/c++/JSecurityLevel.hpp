@@ -51,12 +51,6 @@ namespace margelo::nitro::signet {
         case SecurityLevel::TEE:
           static const auto fieldTEE = clazz->getStaticField<JSecurityLevel>("TEE");
           return clazz->getStaticFieldValue(fieldTEE);
-        case SecurityLevel::TPM:
-          static const auto fieldTPM = clazz->getStaticField<JSecurityLevel>("TPM");
-          return clazz->getStaticFieldValue(fieldTPM);
-        case SecurityLevel::SOFTWARE:
-          static const auto fieldSOFTWARE = clazz->getStaticField<JSecurityLevel>("SOFTWARE");
-          return clazz->getStaticFieldValue(fieldSOFTWARE);
         default:
           std::string stringValue = std::to_string(static_cast<int>(value));
           throw std::invalid_argument("Invalid enum value (" + stringValue + "!");

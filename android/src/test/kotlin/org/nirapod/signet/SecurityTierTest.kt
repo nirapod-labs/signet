@@ -8,6 +8,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -23,7 +24,6 @@ class SecurityTierTest {
         assertTrue(TierPolicy.Strongest.isMet(strongBox, strongBox))
         assertTrue(TierPolicy.AtLeast(HardwareClass.discreteSecure).isMet(strongBox, strongBox))
         assertTrue(TierPolicy.AtLeast(HardwareClass.trustedEnvironment).isMet(strongBox, strongBox))
-        assertTrue(TierPolicy.BestEffort.isMet(strongBox, strongBox))
     }
 
     @Test
@@ -32,32 +32,25 @@ class SecurityTierTest {
         assertFalse(TierPolicy.Strongest.isMet(SecurityLevel.tee, SecurityLevel.strongBox))
         // Where the device's best is the TEE, a TEE key meets strongest.
         assertTrue(TierPolicy.Strongest.isMet(SecurityLevel.tee, SecurityLevel.tee))
-        // strongest never counts a software key as met.
-        assertFalse(TierPolicy.Strongest.isMet(SecurityLevel.software, SecurityLevel.tee))
     }
 
     @Test
-    fun meetsFloorTracksThePartialOrder() {
+    fun atLeastTracksThePartialOrder() {
         val strongBox = SecurityLevel.strongBox
         // A trustedEnvironment floor is met by a tee level, not a discreteSecure floor.
         assertTrue(TierPolicy.AtLeast(HardwareClass.trustedEnvironment).isMet(SecurityLevel.tee, strongBox))
         assertFalse(TierPolicy.AtLeast(HardwareClass.discreteSecure).isMet(SecurityLevel.tee, strongBox))
-        // bestEffort flags a below-class result: false for tee and software.
-        assertFalse(TierPolicy.BestEffort.isMet(SecurityLevel.tee, strongBox))
-        assertFalse(TierPolicy.BestEffort.isMet(SecurityLevel.software, strongBox))
     }
 
     @Test
     fun hardwareClassMapping() {
-        assertNull(SecurityLevel.software.hardwareClass)
-        assertEquals(HardwareClass.trustedEnvironment, SecurityLevel.tee.hardwareClass)
+        // The mapping is total over the hardware-only level set.
         assertEquals(HardwareClass.discreteSecure, SecurityLevel.strongBox.hardwareClass)
-        assertEquals(HardwareClass.discreteSecure, SecurityLevel.secureEnclave.hardwareClass)
-        assertEquals(HardwareClass.discreteSecure, SecurityLevel.tpm.hardwareClass)
+        assertEquals(HardwareClass.trustedEnvironment, SecurityLevel.tee.hardwareClass)
     }
 
     @Test
-    fun securityLevelFromCodeMapsKeystoreLevels() {
+    fun securityLevelFromCodeMapsHardwareLevels() {
         assertEquals(
             SecurityLevel.strongBox,
             AndroidKeyStoreSigner.securityLevelFromCode(KeyProperties.SECURITY_LEVEL_STRONGBOX),
@@ -66,15 +59,34 @@ class SecurityTierTest {
             SecurityLevel.tee,
             AndroidKeyStoreSigner.securityLevelFromCode(KeyProperties.SECURITY_LEVEL_TRUSTED_ENVIRONMENT),
         )
+    }
+
+    @Test
+    fun securityLevelFromCodeTreatsUnknownSecureAsTee() {
+        // UNKNOWN_SECURE is secure hardware of an unnamed class; it maps to the
+        // weakest secure tier, never fails closed and never over-claims StrongBox.
         assertEquals(
-            SecurityLevel.software,
-            AndroidKeyStoreSigner.securityLevelFromCode(KeyProperties.SECURITY_LEVEL_SOFTWARE),
+            SecurityLevel.tee,
+            AndroidKeyStoreSigner.securityLevelFromCode(KeyProperties.SECURITY_LEVEL_UNKNOWN_SECURE),
         )
-        // An unknown level is never inflated to a hardware tier.
-        assertEquals(
-            SecurityLevel.software,
-            AndroidKeyStoreSigner.securityLevelFromCode(KeyProperties.SECURITY_LEVEL_UNKNOWN),
-        )
+    }
+
+    @Test
+    fun securityLevelFromCodeFailsClosedOnSoftware() {
+        // A software-backed level never returns a tier; it fails closed.
+        val error = assertThrows(SignetException::class.java) {
+            AndroidKeyStoreSigner.securityLevelFromCode(KeyProperties.SECURITY_LEVEL_SOFTWARE)
+        }
+        assertEquals(SignetErrorCode.unavailableTier, error.code)
+    }
+
+    @Test
+    fun securityLevelFromCodeFailsClosedOnUnknown() {
+        // An unknown level is unexpected hardware state, not a tier.
+        val error = assertThrows(SignetException::class.java) {
+            AndroidKeyStoreSigner.securityLevelFromCode(KeyProperties.SECURITY_LEVEL_UNKNOWN)
+        }
+        assertEquals(SignetErrorCode.hardwareError, error.code)
     }
 
     @Test
@@ -83,7 +95,6 @@ class SecurityTierTest {
         val reread = SecurityTierReport(
             achieved = SecurityLevel.strongBox,
             requested = null,
-            meetsFloor = true,
             evidence = TierEvidence.keyInfoReadback,
             authEnforced = null,
             invalidated = false,
@@ -94,7 +105,6 @@ class SecurityTierTest {
         val created = SecurityTierReport(
             achieved = SecurityLevel.strongBox,
             requested = TierPolicy.Strongest,
-            meetsFloor = true,
             evidence = TierEvidence.keyInfoReadback,
             authEnforced = AuthClass.none,
             invalidated = false,

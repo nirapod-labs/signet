@@ -6,9 +6,9 @@
 Pod::Spec.new do |s|
   s.name             = 'signet'
   s.version          = '0.1.0-dev'
-  s.summary          = 'Hardware-backed P-256 signing keys via the Apple Secure Enclave and Android Keystore (StrongBox/TEE).'
+  s.summary          = 'Hardware-backed P-256 signing keys in the Apple Secure Enclave (iOS and macOS).'
   s.description      = <<-DESC
-Hardware-backed P-256 signing keys via the Apple Secure Enclave and Android Keystore (StrongBox/TEE).
+The Darwin binding for Signet: hardware-backed P-256 signing keys generated in and confined to the Apple Secure Enclave. Fails closed when no Secure Enclave is reachable; never produces a software-backed key.
                        DESC
   s.homepage         = 'https://github.com/nirapod-labs/signet'
   s.license          = { :file => '../LICENSE' }

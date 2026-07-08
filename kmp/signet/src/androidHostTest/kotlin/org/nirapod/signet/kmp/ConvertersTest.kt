@@ -27,15 +27,21 @@ import org.nirapod.signet.TierPolicy as CoreTierPolicy
  */
 class ConvertersTest {
     @Test
-    fun securityLevelMapsEveryEntryByName() {
-        assertEquals(CoreSecurityLevel.entries.size, SecurityLevel.entries.size)
-        CoreSecurityLevel.entries.forEach { assertEquals(it.name, it.toKmp().name) }
+    fun securityLevelMapsEveryCoreEntryIntoTheUnion() {
+        val union = SecurityLevel.entries.map { it.name }.toSet()
+        CoreSecurityLevel.entries.forEach {
+            assertTrue(it.name in union, "core level ${it.name} is absent from the union")
+            assertEquals(it.name, it.toKmp().name)
+        }
     }
 
     @Test
-    fun tierEvidenceMapsEveryEntryByName() {
-        assertEquals(CoreTierEvidence.entries.size, TierEvidence.entries.size)
-        CoreTierEvidence.entries.forEach { assertEquals(it.name, it.toKmp().name) }
+    fun tierEvidenceMapsEveryCoreEntryIntoTheUnion() {
+        val union = TierEvidence.entries.map { it.name }.toSet()
+        CoreTierEvidence.entries.forEach {
+            assertTrue(it.name in union, "core evidence ${it.name} is absent from the union")
+            assertEquals(it.name, it.toKmp().name)
+        }
     }
 
     @Test
@@ -73,14 +79,12 @@ class ConvertersTest {
         val kmp = CoreSecurityTierReport(
             achieved = CoreSecurityLevel.strongBox,
             requested = CoreTierPolicy.Strongest,
-            meetsFloor = true,
             evidence = CoreTierEvidence.keyInfoReadback,
             authEnforced = CoreAuthClass.biometricOnly,
             invalidated = false,
         ).toKmp()
         assertEquals(SecurityLevel.strongBox, kmp.achieved)
         assertEquals(TierPolicy.Strongest, kmp.requested)
-        assertEquals(true, kmp.meetsFloor)
         assertEquals(TierEvidence.keyInfoReadback, kmp.evidence)
         assertEquals(AuthClass.biometricOnly, kmp.authEnforced)
         assertEquals(false, kmp.invalidated)

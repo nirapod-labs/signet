@@ -29,9 +29,6 @@ data class SecurityTierReport(
   val requestedAtLeastClass: HardwareClass?,
   @DoNotStrip
   @Keep
-  val meetsFloor: Boolean,
-  @DoNotStrip
-  @Keep
   val evidence: TierEvidence,
   @DoNotStrip
   @Keep
@@ -51,7 +48,6 @@ data class SecurityTierReport(
     return Objects.deepEquals(this.achieved, other.achieved)
       && Objects.deepEquals(this.requestedKind, other.requestedKind)
       && Objects.deepEquals(this.requestedAtLeastClass, other.requestedAtLeastClass)
-      && Objects.deepEquals(this.meetsFloor, other.meetsFloor)
       && Objects.deepEquals(this.evidence, other.evidence)
       && Objects.deepEquals(this.authEnforced, other.authEnforced)
       && Objects.deepEquals(this.invalidated, other.invalidated)
@@ -63,7 +59,6 @@ data class SecurityTierReport(
       achieved,
       requestedKind,
       requestedAtLeastClass,
-      meetsFloor,
       evidence,
       authEnforced,
       invalidated,
@@ -79,8 +74,8 @@ data class SecurityTierReport(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(achieved: SecurityLevel, requestedKind: TierPolicyKind?, requestedAtLeastClass: HardwareClass?, meetsFloor: Boolean, evidence: TierEvidence, authEnforced: AuthClass?, invalidated: Boolean, schemaVersion: Double): SecurityTierReport {
-      return SecurityTierReport(achieved, requestedKind, requestedAtLeastClass, meetsFloor, evidence, authEnforced, invalidated, schemaVersion)
+    private fun fromCpp(achieved: SecurityLevel, requestedKind: TierPolicyKind?, requestedAtLeastClass: HardwareClass?, evidence: TierEvidence, authEnforced: AuthClass?, invalidated: Boolean, schemaVersion: Double): SecurityTierReport {
+      return SecurityTierReport(achieved, requestedKind, requestedAtLeastClass, evidence, authEnforced, invalidated, schemaVersion)
     }
   }
 }

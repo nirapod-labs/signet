@@ -30,8 +30,7 @@ import Testing
         let (handle, report) = try store.generateKey(KeySpec(alias: alias))
         #expect(handle.alias == alias)
         #expect(report.achieved == .secureEnclave)
-        #expect(report.evidence == .seTokenPresent)  // Apple SE is never attested
-        #expect(report.meetsFloor)
+        #expect(report.evidence == .seTokenPresent)  // SE token present at creation
         #expect(report.requested == TierPolicy.strongest)  // populated at creation
         #expect(report.authEnforced == AuthClass.none)     // no auth gate in this surface
         #expect(!report.invalidated)
@@ -140,7 +139,6 @@ import Testing
         let report = try store.getSecurityTier(handle)
         #expect(report.achieved == .secureEnclave)
         #expect(report.evidence == .seTokenPresent)
-        #expect(report.meetsFloor)
         #expect(!report.invalidated)
         // A re-read cannot recover the creation-time fields on Apple.
         #expect(report.requested == nil)

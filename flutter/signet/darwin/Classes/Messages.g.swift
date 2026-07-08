@@ -187,30 +187,24 @@ private func nilOrValue<T>(_ value: Any?) -> T? {
 
 
 /// Hardware backing a key, reported as achieved and never assumed from the
-/// request. Crosses the channel as a pinned token, not an ordinal.
+/// request. Generated per build and crosses the channel as its declared ordinal,
+/// so append new members and never reorder.
 enum SecurityLevelWire: Int, CaseIterable {
   case secureEnclave = 0
   case strongBox = 1
   case tee = 2
-  case tpm = 3
-  case software = 4
 }
 
-/// How the achieved level was determined. Only `attested` is cryptographic
-/// proof; every other value is an on-device self-report.
+/// How the achieved level was determined.
 enum TierEvidenceWire: Int, CaseIterable {
-  case attested = 0
-  case keyInfoReadback = 1
-  case seTokenPresent = 2
-  case inferred = 3
-  case selfReportUnverified = 4
+  case keyInfoReadback = 0
+  case seTokenPresent = 1
 }
 
 /// The tier-selection policy kind. `atLeast` carries its class in [KeySpecWire].
 enum TierPolicyKindWire: Int, CaseIterable {
   case strongest = 0
   case atLeast = 1
-  case bestEffort = 2
 }
 
 /// A class in the tier partial order; `discreteSecure` outranks
@@ -340,7 +334,6 @@ struct SecurityTierReportWire: Hashable, CustomStringConvertible {
   var achieved: SecurityLevelWire
   var requestedKind: TierPolicyKindWire? = nil
   var requestedAtLeastClass: HardwareClassWire? = nil
-  var meetsFloor: Bool
   var evidence: TierEvidenceWire
   var authEnforced: AuthClassWire? = nil
   var invalidated: Bool
@@ -352,17 +345,15 @@ struct SecurityTierReportWire: Hashable, CustomStringConvertible {
     let achieved = pigeonVar_list[0] as! SecurityLevelWire
     let requestedKind: TierPolicyKindWire? = nilOrValue(pigeonVar_list[1])
     let requestedAtLeastClass: HardwareClassWire? = nilOrValue(pigeonVar_list[2])
-    let meetsFloor = pigeonVar_list[3] as! Bool
-    let evidence = pigeonVar_list[4] as! TierEvidenceWire
-    let authEnforced: AuthClassWire? = nilOrValue(pigeonVar_list[5])
-    let invalidated = pigeonVar_list[6] as! Bool
-    let schemaVersion = pigeonVar_list[7] as! Int64
+    let evidence = pigeonVar_list[3] as! TierEvidenceWire
+    let authEnforced: AuthClassWire? = nilOrValue(pigeonVar_list[4])
+    let invalidated = pigeonVar_list[5] as! Bool
+    let schemaVersion = pigeonVar_list[6] as! Int64
 
     return SecurityTierReportWire(
       achieved: achieved,
       requestedKind: requestedKind,
       requestedAtLeastClass: requestedAtLeastClass,
-      meetsFloor: meetsFloor,
       evidence: evidence,
       authEnforced: authEnforced,
       invalidated: invalidated,
@@ -374,7 +365,6 @@ struct SecurityTierReportWire: Hashable, CustomStringConvertible {
       achieved,
       requestedKind,
       requestedAtLeastClass,
-      meetsFloor,
       evidence,
       authEnforced,
       invalidated,
@@ -385,7 +375,7 @@ struct SecurityTierReportWire: Hashable, CustomStringConvertible {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return MessagesPigeonInternal.deepEquals(lhs.achieved, rhs.achieved) && MessagesPigeonInternal.deepEquals(lhs.requestedKind, rhs.requestedKind) && MessagesPigeonInternal.deepEquals(lhs.requestedAtLeastClass, rhs.requestedAtLeastClass) && MessagesPigeonInternal.deepEquals(lhs.meetsFloor, rhs.meetsFloor) && MessagesPigeonInternal.deepEquals(lhs.evidence, rhs.evidence) && MessagesPigeonInternal.deepEquals(lhs.authEnforced, rhs.authEnforced) && MessagesPigeonInternal.deepEquals(lhs.invalidated, rhs.invalidated) && MessagesPigeonInternal.deepEquals(lhs.schemaVersion, rhs.schemaVersion)
+    return MessagesPigeonInternal.deepEquals(lhs.achieved, rhs.achieved) && MessagesPigeonInternal.deepEquals(lhs.requestedKind, rhs.requestedKind) && MessagesPigeonInternal.deepEquals(lhs.requestedAtLeastClass, rhs.requestedAtLeastClass) && MessagesPigeonInternal.deepEquals(lhs.evidence, rhs.evidence) && MessagesPigeonInternal.deepEquals(lhs.authEnforced, rhs.authEnforced) && MessagesPigeonInternal.deepEquals(lhs.invalidated, rhs.invalidated) && MessagesPigeonInternal.deepEquals(lhs.schemaVersion, rhs.schemaVersion)
   }
 
   func hash(into hasher: inout Hasher) {
@@ -393,7 +383,6 @@ struct SecurityTierReportWire: Hashable, CustomStringConvertible {
     MessagesPigeonInternal.deepHash(value: achieved, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: requestedKind, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: requestedAtLeastClass, hasher: &hasher)
-    MessagesPigeonInternal.deepHash(value: meetsFloor, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: evidence, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: authEnforced, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: invalidated, hasher: &hasher)
@@ -401,7 +390,7 @@ struct SecurityTierReportWire: Hashable, CustomStringConvertible {
   }
 
   public var description: String {
-    return "SecurityTierReportWire(achieved: \(String(describing: achieved)), requestedKind: \(String(describing: requestedKind)), requestedAtLeastClass: \(String(describing: requestedAtLeastClass)), meetsFloor: \(String(describing: meetsFloor)), evidence: \(String(describing: evidence)), authEnforced: \(String(describing: authEnforced)), invalidated: \(String(describing: invalidated)), schemaVersion: \(String(describing: schemaVersion)))"
+    return "SecurityTierReportWire(achieved: \(String(describing: achieved)), requestedKind: \(String(describing: requestedKind)), requestedAtLeastClass: \(String(describing: requestedAtLeastClass)), evidence: \(String(describing: evidence)), authEnforced: \(String(describing: authEnforced)), invalidated: \(String(describing: invalidated)), schemaVersion: \(String(describing: schemaVersion)))"
   }
 }
 

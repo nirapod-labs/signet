@@ -56,7 +56,6 @@ namespace margelo::nitro::signet {
     SecurityLevel achieved     SWIFT_PRIVATE;
     std::optional<TierPolicyKind> requestedKind     SWIFT_PRIVATE;
     std::optional<HardwareClass> requestedAtLeastClass     SWIFT_PRIVATE;
-    bool meetsFloor     SWIFT_PRIVATE;
     TierEvidence evidence     SWIFT_PRIVATE;
     std::optional<AuthClass> authEnforced     SWIFT_PRIVATE;
     bool invalidated     SWIFT_PRIVATE;
@@ -64,7 +63,7 @@ namespace margelo::nitro::signet {
 
   public:
     SecurityTierReport() = default;
-    explicit SecurityTierReport(SecurityLevel achieved, std::optional<TierPolicyKind> requestedKind, std::optional<HardwareClass> requestedAtLeastClass, bool meetsFloor, TierEvidence evidence, std::optional<AuthClass> authEnforced, bool invalidated, double schemaVersion): achieved(achieved), requestedKind(requestedKind), requestedAtLeastClass(requestedAtLeastClass), meetsFloor(meetsFloor), evidence(evidence), authEnforced(authEnforced), invalidated(invalidated), schemaVersion(schemaVersion) {}
+    explicit SecurityTierReport(SecurityLevel achieved, std::optional<TierPolicyKind> requestedKind, std::optional<HardwareClass> requestedAtLeastClass, TierEvidence evidence, std::optional<AuthClass> authEnforced, bool invalidated, double schemaVersion): achieved(achieved), requestedKind(requestedKind), requestedAtLeastClass(requestedAtLeastClass), evidence(evidence), authEnforced(authEnforced), invalidated(invalidated), schemaVersion(schemaVersion) {}
 
   public:
     friend bool operator==(const SecurityTierReport& lhs, const SecurityTierReport& rhs) = default;
@@ -83,7 +82,6 @@ namespace margelo::nitro {
         JSIConverter<margelo::nitro::signet::SecurityLevel>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "achieved"))),
         JSIConverter<std::optional<margelo::nitro::signet::TierPolicyKind>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "requestedKind"))),
         JSIConverter<std::optional<margelo::nitro::signet::HardwareClass>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "requestedAtLeastClass"))),
-        JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "meetsFloor"))),
         JSIConverter<margelo::nitro::signet::TierEvidence>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "evidence"))),
         JSIConverter<std::optional<margelo::nitro::signet::AuthClass>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "authEnforced"))),
         JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "invalidated"))),
@@ -95,7 +93,6 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "achieved"), JSIConverter<margelo::nitro::signet::SecurityLevel>::toJSI(runtime, arg.achieved));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "requestedKind"), JSIConverter<std::optional<margelo::nitro::signet::TierPolicyKind>>::toJSI(runtime, arg.requestedKind));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "requestedAtLeastClass"), JSIConverter<std::optional<margelo::nitro::signet::HardwareClass>>::toJSI(runtime, arg.requestedAtLeastClass));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "meetsFloor"), JSIConverter<bool>::toJSI(runtime, arg.meetsFloor));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "evidence"), JSIConverter<margelo::nitro::signet::TierEvidence>::toJSI(runtime, arg.evidence));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "authEnforced"), JSIConverter<std::optional<margelo::nitro::signet::AuthClass>>::toJSI(runtime, arg.authEnforced));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "invalidated"), JSIConverter<bool>::toJSI(runtime, arg.invalidated));
@@ -113,7 +110,6 @@ namespace margelo::nitro {
       if (!JSIConverter<margelo::nitro::signet::SecurityLevel>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "achieved")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::signet::TierPolicyKind>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "requestedKind")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::signet::HardwareClass>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "requestedAtLeastClass")))) return false;
-      if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "meetsFloor")))) return false;
       if (!JSIConverter<margelo::nitro::signet::TierEvidence>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "evidence")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::signet::AuthClass>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "authEnforced")))) return false;
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "invalidated")))) return false;

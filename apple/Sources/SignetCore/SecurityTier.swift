@@ -3,22 +3,16 @@
 
 /// The hardware backing a signing key, reported as the achieved level and never
 /// assumed from the request. Closed set; see `conformance/security-level.json`.
+/// The Apple core reaches only the Secure Enclave; when it is unavailable the
+/// store fails closed and never produces a software-backed key.
 public enum SecurityLevel: String, Sendable, Equatable, CaseIterable {
     case secureEnclave
-    case strongBox
-    case tee
-    case tpm
-    case software
 }
 
-/// How the achieved `SecurityLevel` was determined. Only `attested` is
-/// cryptographic proof; every other value is an on-device self-report.
+/// How the achieved `SecurityLevel` was determined. On Apple the evidence is the
+/// Secure Enclave token's presence at key creation.
 public enum TierEvidence: String, Sendable, Equatable, CaseIterable {
-    case attested
-    case keyInfoReadback
     case seTokenPresent
-    case inferred
-    case selfReportUnverified
 }
 
 /// The presence check bound to a key at creation, derived from the created
@@ -31,8 +25,7 @@ public enum AuthClass: String, Sendable, Equatable, CaseIterable {
 }
 
 /// A class in the tier partial order. `atLeast(_:)` selects by class:
-/// `discreteSecure` covers Secure Enclave, StrongBox, and TPM, and outranks
-/// `trustedEnvironment`.
+/// `discreteSecure` (the Secure Enclave on Apple) outranks `trustedEnvironment`.
 public enum HardwareClass: String, Sendable, Equatable, CaseIterable {
     case discreteSecure
     case trustedEnvironment
@@ -41,43 +34,25 @@ public enum HardwareClass: String, Sendable, Equatable, CaseIterable {
 /// Tier selection on `KeySpec`. Selection is by class, never a concrete
 /// `SecurityLevel`; the achieved level is reported in `SecurityTierReport`.
 public enum TierPolicy: Sendable, Equatable {
-    /// The device's best hardware tier. Fails `unavailableTier` if no hardware
-    /// is available; never returns software.
+    /// The device's strongest hardware tier. Fails closed (`unavailableTier`)
+    /// when no secure hardware is reachable; never produces a software-backed key.
     case strongest
-    /// A hard floor by class. Fails `unavailableTier` below the class.
+    /// A hard floor by class. Fails closed (`unavailableTier`) below the class.
     case atLeast(HardwareClass)
-    /// Never fails on tier where a software keystore exists; may then return a
-    /// weaker level with `meetsFloor == false` and honest evidence (the only
-    /// policy that can return software). On a platform with no software backend
-    /// (Apple), yields the Secure Enclave or fails `unavailableTier`.
-    case bestEffort
-}
-
-extension HardwareClass {
-    /// Rank in the partial order; lower is stronger.
-    var rank: Int {
-        switch self {
-        case .discreteSecure: return 0
-        case .trustedEnvironment: return 1
-        }
-    }
 }
 
 extension SecurityLevel {
-    /// The partial-order class this level belongs to, or `nil` for `software`,
-    /// which is below every hardware class.
-    var hardwareClass: HardwareClass? {
+    /// The partial-order class this level belongs to. Total: every reachable
+    /// level is hardware-backed.
+    var hardwareClass: HardwareClass {
         switch self {
-        case .secureEnclave, .strongBox, .tpm: return .discreteSecure
-        case .tee: return .trustedEnvironment
-        case .software: return nil
+        case .secureEnclave: return .discreteSecure
         }
     }
 }
 
-/// One report shape everywhere. `achieved` is read back from the created key,
-/// `meetsFloor` derives from the tier partial order, and `authEnforced` is
-/// derived from the created access control.
+/// One report shape everywhere. `achieved` is read back from the created key and
+/// `authEnforced` is derived from the created access control.
 ///
 /// `requested` and `authEnforced` are optional. `generateKey` populates both. A
 /// `getSecurityTier` re-read leaves `requested` nil (the policy is not stored
@@ -88,7 +63,6 @@ extension SecurityLevel {
 public struct SecurityTierReport: Sendable, Equatable {
     public let achieved: SecurityLevel
     public let requested: TierPolicy?
-    public let meetsFloor: Bool
     public let evidence: TierEvidence
     public let authEnforced: AuthClass?
     public let invalidated: Bool
@@ -97,7 +71,6 @@ public struct SecurityTierReport: Sendable, Equatable {
     public init(
         achieved: SecurityLevel,
         requested: TierPolicy?,
-        meetsFloor: Bool,
         evidence: TierEvidence,
         authEnforced: AuthClass?,
         invalidated: Bool,
@@ -105,25 +78,9 @@ public struct SecurityTierReport: Sendable, Equatable {
     ) {
         self.achieved = achieved
         self.requested = requested
-        self.meetsFloor = meetsFloor
         self.evidence = evidence
         self.authEnforced = authEnforced
         self.invalidated = invalidated
         self.schemaVersion = schemaVersion
-    }
-}
-
-extension TierPolicy {
-    /// Whether `achieved` satisfies this policy's floor, per the partial order.
-    func isMet(by achieved: SecurityLevel, platformStrongest: SecurityLevel) -> Bool {
-        switch self {
-        case .strongest:
-            return achieved == platformStrongest
-        case .atLeast(let floor):
-            guard let achievedClass = achieved.hardwareClass else { return false }
-            return achievedClass.rank <= floor.rank
-        case .bestEffort:
-            return achieved.hardwareClass == .discreteSecure
-        }
     }
 }

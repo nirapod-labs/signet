@@ -47,8 +47,6 @@ namespace margelo::nitro::signet {
       jni::local_ref<JTierPolicyKind> requestedKind = this->getFieldValue(fieldRequestedKind);
       static const auto fieldRequestedAtLeastClass = clazz->getField<JHardwareClass>("requestedAtLeastClass");
       jni::local_ref<JHardwareClass> requestedAtLeastClass = this->getFieldValue(fieldRequestedAtLeastClass);
-      static const auto fieldMeetsFloor = clazz->getField<jboolean>("meetsFloor");
-      jboolean meetsFloor = this->getFieldValue(fieldMeetsFloor);
       static const auto fieldEvidence = clazz->getField<JTierEvidence>("evidence");
       jni::local_ref<JTierEvidence> evidence = this->getFieldValue(fieldEvidence);
       static const auto fieldAuthEnforced = clazz->getField<JAuthClass>("authEnforced");
@@ -61,7 +59,6 @@ namespace margelo::nitro::signet {
         achieved->toCpp(),
         requestedKind != nullptr ? std::make_optional(requestedKind->toCpp()) : std::nullopt,
         requestedAtLeastClass != nullptr ? std::make_optional(requestedAtLeastClass->toCpp()) : std::nullopt,
-        static_cast<bool>(meetsFloor),
         evidence->toCpp(),
         authEnforced != nullptr ? std::make_optional(authEnforced->toCpp()) : std::nullopt,
         static_cast<bool>(invalidated),
@@ -75,7 +72,7 @@ namespace margelo::nitro::signet {
      */
     [[maybe_unused]]
     static jni::local_ref<JSecurityTierReport::javaobject> fromCpp(const SecurityTierReport& value) {
-      using JSignature = JSecurityTierReport(jni::alias_ref<JSecurityLevel>, jni::alias_ref<JTierPolicyKind>, jni::alias_ref<JHardwareClass>, jboolean, jni::alias_ref<JTierEvidence>, jni::alias_ref<JAuthClass>, jboolean, double);
+      using JSignature = JSecurityTierReport(jni::alias_ref<JSecurityLevel>, jni::alias_ref<JTierPolicyKind>, jni::alias_ref<JHardwareClass>, jni::alias_ref<JTierEvidence>, jni::alias_ref<JAuthClass>, jboolean, double);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
@@ -83,7 +80,6 @@ namespace margelo::nitro::signet {
         JSecurityLevel::fromCpp(value.achieved),
         value.requestedKind.has_value() ? JTierPolicyKind::fromCpp(value.requestedKind.value()) : nullptr,
         value.requestedAtLeastClass.has_value() ? JHardwareClass::fromCpp(value.requestedAtLeastClass.value()) : nullptr,
-        value.meetsFloor,
         JTierEvidence::fromCpp(value.evidence),
         value.authEnforced.has_value() ? JAuthClass::fromCpp(value.authEnforced.value()) : nullptr,
         value.invalidated,

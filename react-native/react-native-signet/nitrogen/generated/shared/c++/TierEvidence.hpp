@@ -29,11 +29,8 @@ namespace margelo::nitro::signet {
    * An enum which can be represented as a JavaScript union (TierEvidence).
    */
   enum class TierEvidence {
-    ATTESTED      SWIFT_NAME(attested) = 0,
-    KEYINFOREADBACK      SWIFT_NAME(keyinforeadback) = 1,
-    SETOKENPRESENT      SWIFT_NAME(setokenpresent) = 2,
-    INFERRED      SWIFT_NAME(inferred) = 3,
-    SELFREPORTUNVERIFIED      SWIFT_NAME(selfreportunverified) = 4,
+    KEYINFOREADBACK      SWIFT_NAME(keyinforeadback) = 0,
+    SETOKENPRESENT      SWIFT_NAME(setokenpresent) = 1,
   } CLOSED_ENUM;
 
 } // namespace margelo::nitro::signet
@@ -46,22 +43,16 @@ namespace margelo::nitro {
     static inline margelo::nitro::signet::TierEvidence fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       std::string unionValue = JSIConverter<std::string>::fromJSI(runtime, arg);
       switch (hashString(unionValue.c_str(), unionValue.size())) {
-        case hashString("attested"): return margelo::nitro::signet::TierEvidence::ATTESTED;
         case hashString("keyInfoReadback"): return margelo::nitro::signet::TierEvidence::KEYINFOREADBACK;
         case hashString("seTokenPresent"): return margelo::nitro::signet::TierEvidence::SETOKENPRESENT;
-        case hashString("inferred"): return margelo::nitro::signet::TierEvidence::INFERRED;
-        case hashString("selfReportUnverified"): return margelo::nitro::signet::TierEvidence::SELFREPORTUNVERIFIED;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum TierEvidence - invalid value!");
       }
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, margelo::nitro::signet::TierEvidence arg) {
       switch (arg) {
-        case margelo::nitro::signet::TierEvidence::ATTESTED: return JSIConverter<std::string>::toJSI(runtime, "attested");
         case margelo::nitro::signet::TierEvidence::KEYINFOREADBACK: return JSIConverter<std::string>::toJSI(runtime, "keyInfoReadback");
         case margelo::nitro::signet::TierEvidence::SETOKENPRESENT: return JSIConverter<std::string>::toJSI(runtime, "seTokenPresent");
-        case margelo::nitro::signet::TierEvidence::INFERRED: return JSIConverter<std::string>::toJSI(runtime, "inferred");
-        case margelo::nitro::signet::TierEvidence::SELFREPORTUNVERIFIED: return JSIConverter<std::string>::toJSI(runtime, "selfReportUnverified");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert TierEvidence to JS - invalid value: "
                                     + std::to_string(static_cast<int>(arg)) + "!");
@@ -73,11 +64,8 @@ namespace margelo::nitro {
       }
       std::string unionValue = JSIConverter<std::string>::fromJSI(runtime, value);
       switch (hashString(unionValue.c_str(), unionValue.size())) {
-        case hashString("attested"):
         case hashString("keyInfoReadback"):
         case hashString("seTokenPresent"):
-        case hashString("inferred"):
-        case hashString("selfReportUnverified"):
           return true;
         default:
           return false;

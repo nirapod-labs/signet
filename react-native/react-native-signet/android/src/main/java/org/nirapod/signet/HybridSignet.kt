@@ -132,7 +132,6 @@ private fun WireKeySpec.toCore(): KeySpec = KeySpec(
     WireTierPolicyKind.ATLEAST -> TierPolicy.AtLeast(
       (atLeastClass ?: throw SignetException(SignetErrorCode.invalidArgument)).toCore(),
     )
-    WireTierPolicyKind.BESTEFFORT -> TierPolicy.BestEffort
   },
   accessControl = AccessControlPolicy(
     authRequirement = authRequirement.toCore(),
@@ -179,7 +178,6 @@ private fun SecurityTierReport.toWire(): WireSecurityTierReport {
     achieved = achieved.toWire(),
     requestedKind = requestedKind,
     requestedAtLeastClass = requestedAtLeastClass,
-    meetsFloor = meetsFloor,
     evidence = evidence.toWire(),
     authEnforced = authEnforced?.toWire(),
     invalidated = invalidated,
@@ -191,7 +189,6 @@ private fun requestedToWire(policy: TierPolicy?): Pair<WireTierPolicyKind?, Wire
   null -> null to null
   TierPolicy.Strongest -> WireTierPolicyKind.STRONGEST to null
   is TierPolicy.AtLeast -> WireTierPolicyKind.ATLEAST to policy.hardwareClass.toWire()
-  TierPolicy.BestEffort -> WireTierPolicyKind.BESTEFFORT to null
 }
 
 private fun AttestationResult.toWire(): WireAttestationResult = WireAttestationResult(
@@ -204,19 +201,12 @@ private fun AttestationResult.toWire(): WireAttestationResult = WireAttestationR
 )
 
 private fun SecurityLevel.toWire(): WireSecurityLevel = when (this) {
-  SecurityLevel.secureEnclave -> WireSecurityLevel.SECUREENCLAVE
   SecurityLevel.strongBox -> WireSecurityLevel.STRONGBOX
   SecurityLevel.tee -> WireSecurityLevel.TEE
-  SecurityLevel.tpm -> WireSecurityLevel.TPM
-  SecurityLevel.software -> WireSecurityLevel.SOFTWARE
 }
 
 private fun TierEvidence.toWire(): WireTierEvidence = when (this) {
-  TierEvidence.attested -> WireTierEvidence.ATTESTED
   TierEvidence.keyInfoReadback -> WireTierEvidence.KEYINFOREADBACK
-  TierEvidence.seTokenPresent -> WireTierEvidence.SETOKENPRESENT
-  TierEvidence.inferred -> WireTierEvidence.INFERRED
-  TierEvidence.selfReportUnverified -> WireTierEvidence.SELFREPORTUNVERIFIED
 }
 
 private fun AuthClass.toWire(): com.margelo.nitro.signet.AuthClass = when (this) {

@@ -15,21 +15,15 @@ import 'package:pigeon/pigeon.dart';
 )
 
 /// Hardware backing a key, reported as achieved and never assumed from the
-/// request. Crosses the channel as a pinned token, not an ordinal.
-enum SecurityLevelWire { secureEnclave, strongBox, tee, tpm, software }
+/// request. Generated per build and crosses the channel as its declared ordinal,
+/// so append new members and never reorder.
+enum SecurityLevelWire { secureEnclave, strongBox, tee }
 
-/// How the achieved level was determined. Only `attested` is cryptographic
-/// proof; every other value is an on-device self-report.
-enum TierEvidenceWire {
-  attested,
-  keyInfoReadback,
-  seTokenPresent,
-  inferred,
-  selfReportUnverified,
-}
+/// How the achieved level was determined.
+enum TierEvidenceWire { keyInfoReadback, seTokenPresent }
 
 /// The tier-selection policy kind. `atLeast` carries its class in [KeySpecWire].
-enum TierPolicyKindWire { strongest, atLeast, bestEffort }
+enum TierPolicyKindWire { strongest, atLeast }
 
 /// A class in the tier partial order; `discreteSecure` outranks
 /// `trustedEnvironment`.
@@ -101,7 +95,6 @@ class SecurityTierReportWire {
     required this.achieved,
     this.requestedKind,
     this.requestedAtLeastClass,
-    required this.meetsFloor,
     required this.evidence,
     this.authEnforced,
     required this.invalidated,
@@ -111,7 +104,6 @@ class SecurityTierReportWire {
   final SecurityLevelWire achieved;
   final TierPolicyKindWire? requestedKind;
   final HardwareClassWire? requestedAtLeastClass;
-  final bool meetsFloor;
   final TierEvidenceWire evidence;
   final AuthClassWire? authEnforced;
   final bool invalidated;

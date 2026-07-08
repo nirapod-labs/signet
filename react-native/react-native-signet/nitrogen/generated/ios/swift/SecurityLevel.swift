@@ -23,10 +23,6 @@ public extension SecurityLevel {
         self = .strongbox
       case "tee":
         self = .tee
-      case "tpm":
-        self = .tpm
-      case "software":
-        self = .software
       default:
         return nil
     }
@@ -43,10 +39,6 @@ public extension SecurityLevel {
         return "strongBox"
       case .tee:
         return "tee"
-      case .tpm:
-        return "tpm"
-      case .software:
-        return "software"
     }
   }
 }

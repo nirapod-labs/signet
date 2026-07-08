@@ -73,16 +73,15 @@ public class AndroidKeyStoreSigner(private val context: Context) {
         }
 
         val keyInfo = keyInfoOf(privateKey)
-        val achieved = securityLevel(keyInfo, strongBoxUsed)
+        val achieved = securityLevel(keyInfo, strongBoxUsed, entryAlias)
         // The device's strongest achievable tier: StrongBox where the hardware
         // has it, otherwise the TEE. `strongest` must match this; a StrongBox
         // device that fell back to the TEE fails rather than silently downgrade.
         val platformStrongest =
             if (deviceHasStrongBox) SecurityLevel.strongBox else SecurityLevel.tee
-        val meetsFloor = spec.tierPolicy.isMet(achieved, platformStrongest)
-        // A hard policy (strongest / atLeast) fails closed below its floor; it
-        // never hands back a weaker key. bestEffort never fails on tier.
-        if (spec.tierPolicy !is TierPolicy.BestEffort && !meetsFloor) {
+        // Both policies fail closed below the floor: the below-floor key is
+        // deleted and never returned.
+        if (!spec.tierPolicy.isMet(achieved, platformStrongest)) {
             deleteEntry(entryAlias)
             throw SignetException(SignetErrorCode.unavailableTier)
         }
@@ -90,12 +89,7 @@ public class AndroidKeyStoreSigner(private val context: Context) {
         val report = SecurityTierReport(
             achieved = achieved,
             requested = spec.tierPolicy,
-            meetsFloor = meetsFloor,
-            evidence = if (achieved == SecurityLevel.software) {
-                TierEvidence.selfReportUnverified
-            } else {
-                TierEvidence.keyInfoReadback
-            },
+            evidence = TierEvidence.keyInfoReadback,
             authEnforced = authClass(keyInfo),
             invalidated = false,
         )
@@ -304,14 +298,16 @@ public class AndroidKeyStoreSigner(private val context: Context) {
 
     /**
      * Re-reads the tier of an existing key from its [KeyInfo]. `requested` comes
-     * back null: the policy is not stored with the key. Unlike Apple, Android can
-     * read the created key's auth requirement back from [KeyInfo], and
-     * `authEnforced` is populated here rather than null. `invalidated` is
-     * best-effort false; the authoritative invalidation signal is `keyInvalidated`
-     * on `sign`. `meetsFloor` reports whether the key is in hardware at all, with
-     * no stored policy to check against.
+     * back null: the policy is not stored with the key. Android reads the created
+     * key's auth requirement back from [KeyInfo], so `authEnforced` is populated
+     * here. `invalidated` is best-effort false; the authoritative invalidation
+     * signal is `keyInvalidated` on `sign`. This is a read-only status call: a key
+     * that reads back below the secure floor fails closed with a throw, but the
+     * existing key is never deleted here; deletion belongs to the creation path.
      *
-     * @throws SignetException `notFound` if no key exists for the alias.
+     * @throws SignetException `notFound` if no key exists for the alias;
+     *   `unavailableTier` if the key reads back software-backed; `hardwareError`
+     *   if the Keystore reports an indeterminate or unexpected level.
      */
     public fun getSecurityTier(handle: KeyHandle): SecurityTierReport {
         val privateKey = loadPrivateKey(handle.alias)
@@ -320,12 +316,7 @@ public class AndroidKeyStoreSigner(private val context: Context) {
         return SecurityTierReport(
             achieved = achieved,
             requested = null,
-            meetsFloor = achieved.hardwareClass != null,
-            evidence = if (achieved == SecurityLevel.software) {
-                TierEvidence.selfReportUnverified
-            } else {
-                TierEvidence.keyInfoReadback
-            },
+            evidence = TierEvidence.keyInfoReadback,
             authEnforced = authClass(keyInfo),
             invalidated = false,
         )
@@ -438,37 +429,59 @@ public class AndroidKeyStoreSigner(private val context: Context) {
     }
 
     /**
+     * Runs a tier decode and, if it fails closed, deletes the offending key
+     * before the failure propagates. A key that is not in the required hardware
+     * is never left in the Keystore.
+     */
+    private fun decodeOrDelete(entryAlias: String, decode: () -> SecurityLevel): SecurityLevel =
+        try {
+            decode()
+        } catch (failure: SignetException) {
+            deleteEntry(entryAlias)
+            throw failure
+        }
+
+    /**
      * The achieved tier, read back from the created key. On API 31+ the Keystore
      * reports the level directly; below that, a successful StrongBox creation is
-     * the StrongBox signal and `isInsideSecureHardware` distinguishes TEE from
-     * software.
+     * the StrongBox signal and `isInsideSecureHardware` identifies the TEE. A key
+     * that is not in secure hardware is deleted and the call fails closed with
+     * `unavailableTier`.
      */
-    private fun securityLevel(keyInfo: KeyInfo, strongBoxUsed: Boolean): SecurityLevel {
+    private fun securityLevel(keyInfo: KeyInfo, strongBoxUsed: Boolean, entryAlias: String): SecurityLevel {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            return securityLevelFromCode(keyInfo.securityLevel)
+            return decodeOrDelete(entryAlias) { securityLevelFromCode(keyInfo.securityLevel) }
         }
         @Suppress("DEPRECATION")
         return when {
             strongBoxUsed -> SecurityLevel.strongBox
             keyInfo.isInsideSecureHardware -> SecurityLevel.tee
-            else -> SecurityLevel.software
+            else -> {
+                deleteEntry(entryAlias)
+                throw SignetException(SignetErrorCode.unavailableTier)
+            }
         }
     }
 
     /**
      * The achieved tier read back from an existing key, with no creation-time
      * StrongBox signal. On API 31+ the Keystore reports the level directly; below
-     * that, `isInsideSecureHardware` distinguishes the TEE from software but
-     * cannot prove StrongBox: a StrongBox key reads back as `tee`. `generateKey`
-     * reports the StrongBox level at creation, where the creation signal is
-     * available.
+     * that, `isInsideSecureHardware` identifies the TEE but cannot prove StrongBox,
+     * so a StrongBox key reads back as `tee`; `generateKey` reports the StrongBox
+     * level at creation, where the creation signal is available. A key that reads
+     * back below the secure floor fails closed with a throw; unlike the creation
+     * path, a status re-read never deletes the existing key.
      */
     private fun securityLevelReRead(keyInfo: KeyInfo): SecurityLevel {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             return securityLevelFromCode(keyInfo.securityLevel)
         }
         @Suppress("DEPRECATION")
-        return if (keyInfo.isInsideSecureHardware) SecurityLevel.tee else SecurityLevel.software
+        return if (keyInfo.isInsideSecureHardware) {
+            SecurityLevel.tee
+        } else {
+            throw SignetException(SignetErrorCode.unavailableTier)
+        }
     }
 
     /**
@@ -528,11 +541,25 @@ public class AndroidKeyStoreSigner(private val context: Context) {
             if (digest.size != 32) throw SignetException(SignetErrorCode.invalidArgument)
         }
 
-        /** Maps a `KeyInfo.getSecurityLevel()` code (API 31+) to a [SecurityLevel]. */
+        /**
+         * Maps a `KeyInfo.getSecurityLevel()` code (API 31+) to a [SecurityLevel].
+         * StrongBox and the TEE map to their tier; `SECURITY_LEVEL_UNKNOWN_SECURE`
+         * is secure hardware of an unnamed class and maps to the weakest secure
+         * tier (`tee`) rather than over-claim StrongBox. A software-backed level
+         * fails closed with `unavailableTier`; an indeterminate or unparseable level
+         * fails with `hardwareError`. On the creation path the caller deletes the
+         * offending key before the throw propagates; a status re-read leaves it.
+         *
+         * @throws SignetException `unavailableTier` for a software-backed level;
+         *   `hardwareError` for an indeterminate or unparseable level.
+         */
         internal fun securityLevelFromCode(level: Int): SecurityLevel = when (level) {
             KeyProperties.SECURITY_LEVEL_STRONGBOX -> SecurityLevel.strongBox
             KeyProperties.SECURITY_LEVEL_TRUSTED_ENVIRONMENT -> SecurityLevel.tee
-            else -> SecurityLevel.software
+            KeyProperties.SECURITY_LEVEL_UNKNOWN_SECURE -> SecurityLevel.tee
+            KeyProperties.SECURITY_LEVEL_SOFTWARE ->
+                throw SignetException(SignetErrorCode.unavailableTier)
+            else -> throw SignetException(SignetErrorCode.hardwareError)
         }
 
         /**
@@ -563,8 +590,7 @@ public class AndroidKeyStoreSigner(private val context: Context) {
          * Converts a DER ECDSA signature (`SEQUENCE { INTEGER r, INTEGER s }`) to
          * the fixed 64-byte `r || s` form, each a 32-byte big-endian integer.
          * Returns null if the DER is malformed or a component exceeds 32 bytes;
-         * `sign` maps that to `hardwareError`. Structurally identical to the Apple
-         * core's `derToRawRS`: both decoders reject the same inputs.
+         * `sign` maps that to `hardwareError`.
          */
         internal fun derToRawSignature(der: ByteArray): ByteArray? {
             if (der.size < 2 || (der[0].toInt() and 0xFF) != 0x30 || (der[1].toInt() and 0x80) != 0) {

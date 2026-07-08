@@ -38,7 +38,7 @@ class AndroidKeyStoreSignerInstrumentedTest {
 
     @Test
     fun generatesAKeyInHardwareAndReadsBackTheTier() {
-        val (handle, report) = signer.generateKey(KeySpec(alias, tierPolicy = TierPolicy.BestEffort))
+        val (handle, report) = signer.generateKey(KeySpec(alias, tierPolicy = TierPolicy.AtLeast(HardwareClass.trustedEnvironment)))
         assertEquals(alias, handle.alias)
         assertNotNull(report.achieved)
         val reread = signer.getSecurityTier(handle)
@@ -48,7 +48,7 @@ class AndroidKeyStoreSignerInstrumentedTest {
 
     @Test
     fun theGeneratedPublicKeyIsAValidUncompressedPoint() {
-        val (handle, _) = signer.generateKey(KeySpec(alias, tierPolicy = TierPolicy.BestEffort))
+        val (handle, _) = signer.generateKey(KeySpec(alias, tierPolicy = TierPolicy.AtLeast(HardwareClass.trustedEnvironment)))
         val publicKey = signer.getPublicKey(handle)
         assertEquals(PublicKey.Format.rawX962, publicKey.format)
         assertEquals(65, publicKey.bytes.size)
@@ -57,14 +57,14 @@ class AndroidKeyStoreSignerInstrumentedTest {
 
     @Test
     fun thePrivateKeyIsNotExportable() {
-        signer.generateKey(KeySpec(alias, tierPolicy = TierPolicy.BestEffort))
+        signer.generateKey(KeySpec(alias, tierPolicy = TierPolicy.AtLeast(HardwareClass.trustedEnvironment)))
         // The Keystore never releases private-key material: getEncoded is null.
         assertNull(signer.loadPrivateKey(alias).encoded)
     }
 
     @Test
     fun aSilentSignatureVerifiesAgainstThePublicKey() {
-        val (handle, _) = signer.generateKey(KeySpec(alias, tierPolicy = TierPolicy.BestEffort))
+        val (handle, _) = signer.generateKey(KeySpec(alias, tierPolicy = TierPolicy.AtLeast(HardwareClass.trustedEnvironment)))
         val digest = ByteArray(32) { it.toByte() }
         val der = signer.sign(handle, digest)
         val verifier = Signature.getInstance("NONEwithECDSA")
@@ -75,7 +75,7 @@ class AndroidKeyStoreSignerInstrumentedTest {
 
     @Test
     fun aRawEncodedSignatureIs64Bytes() {
-        val (handle, _) = signer.generateKey(KeySpec(alias, tierPolicy = TierPolicy.BestEffort))
+        val (handle, _) = signer.generateKey(KeySpec(alias, tierPolicy = TierPolicy.AtLeast(HardwareClass.trustedEnvironment)))
         val raw = signer.sign(handle, ByteArray(32) { 0x11 }, SignOptions(SignOptions.Encoding.rawRS))
         assertEquals(64, raw.size)
     }
@@ -85,7 +85,7 @@ class AndroidKeyStoreSignerInstrumentedTest {
         val (handle, _) = signer.generateKey(
             KeySpec(
                 alias,
-                tierPolicy = TierPolicy.BestEffort,
+                tierPolicy = TierPolicy.AtLeast(HardwareClass.trustedEnvironment),
                 attestationChallenge = ByteArray(16) { 0x42 },
             ),
         )
@@ -96,7 +96,7 @@ class AndroidKeyStoreSignerInstrumentedTest {
 
     @Test
     fun noChallengeYieldsNoAttestation() {
-        val (handle, _) = signer.generateKey(KeySpec(alias, tierPolicy = TierPolicy.BestEffort))
+        val (handle, _) = signer.generateKey(KeySpec(alias, tierPolicy = TierPolicy.AtLeast(HardwareClass.trustedEnvironment)))
         val attestation = signer.getAttestation(handle)
         assertEquals(AttestationResult.Format.none, attestation.format)
         assertTrue(attestation.chain.isEmpty())
@@ -104,9 +104,9 @@ class AndroidKeyStoreSignerInstrumentedTest {
 
     @Test
     fun regeneratingAnExistingAliasFails() {
-        signer.generateKey(KeySpec(alias, tierPolicy = TierPolicy.BestEffort))
+        signer.generateKey(KeySpec(alias, tierPolicy = TierPolicy.AtLeast(HardwareClass.trustedEnvironment)))
         val error = try {
-            signer.generateKey(KeySpec(alias, tierPolicy = TierPolicy.BestEffort))
+            signer.generateKey(KeySpec(alias, tierPolicy = TierPolicy.AtLeast(HardwareClass.trustedEnvironment)))
             null
         } catch (thrown: SignetException) {
             thrown
@@ -116,7 +116,7 @@ class AndroidKeyStoreSignerInstrumentedTest {
 
     @Test
     fun deleteIsIdempotent() {
-        signer.generateKey(KeySpec(alias, tierPolicy = TierPolicy.BestEffort))
+        signer.generateKey(KeySpec(alias, tierPolicy = TierPolicy.AtLeast(HardwareClass.trustedEnvironment)))
         signer.delete(alias)
         signer.delete(alias) // a second delete is a no-op, not an error
         assertFalse(signer.exists(alias))
