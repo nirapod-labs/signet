@@ -61,9 +61,15 @@ not a discrete-secure tier.
   `authInProgress` is proven in `AuthSignGateTest`; the full prompt-to-signature
   flow and the `userCanceled` / `authFailed` / `authContextRequired` mapping are
   checked on this lane.
-- `keyInvalidated`: a `KeyPermanentlyInvalidatedException` is raised only after a
-  real biometric re-enrollment changes the enrolled set; the mapping is in the
-  code, its trigger is device-only.
+- `keyInvalidated` versus biometry-any survival, for a per-use biometric-only key
+  (`AUTH_BIOMETRIC_STRONG`, no validity window): `invalidateOnBiometricEnrollment =
+  true` (the default) makes a real biometric re-enrollment raise
+  `KeyPermanentlyInvalidatedException` on the next use; `false` lets the key survive
+  and still sign. The flag is set explicitly at generation via
+  `setInvalidatedByBiometricEnrollment`. Two platform caveats: a
+  `biometricOrDeviceCredential` key already survives re-enrollment through its
+  device-credential authenticator, independent of the flag; and the flag has no
+  defined effect once `authValiditySeconds > 0`. The trigger is device-only.
 
 ## Running
 
