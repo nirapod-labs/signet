@@ -29,6 +29,9 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  # Manrope and JetBrains Mono, used for the example's typography.
+  google_fonts: ^8.1.0
+
 dev_dependencies:
   integration_test:
     sdk: flutter
