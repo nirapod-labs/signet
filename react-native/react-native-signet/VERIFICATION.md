@@ -32,8 +32,8 @@ has no separate macOS key, so the `ios` Swift implementation and the generated
 autolinking cover both; the only macOS-specific wiring is the podspec platform
 line (`Signet.podspec` declares `:osx`).
 
-- The `SignetAppleCore` pod compiles for macOS: `pod lib lint
-  apple/SignetAppleCore.podspec --platforms=macos` passes. This is the same
+- The `SignetCore` pod compiles for macOS: `pod lib lint
+  apple/SignetCore.podspec --platforms=macos` passes. This is the same
   Secure Enclave core the Flutter binding builds for macOS through SPM.
 - The binding's Swift is unchanged from the iOS build and uses only cross-platform
   frameworks (Foundation, Security, LocalAuthentication, NitroModules), all present

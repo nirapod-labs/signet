@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "xyz.nirapod.signet.example"
+      "bundleIdentifier": "org.nirapod.signet.example"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +23,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "xyz.nirapod.signet.example"
+      "package": "org.nirapod.signet.example"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -34,14 +34,14 @@
       "macos"
     ],
     "macos": {
-      "bundleIdentifier": "xyz.nirapod.signet.example"
+      "bundleIdentifier": "org.nirapod.signet.example"
     },
     "plugins": [
       [
         "expo-desktop-config-plugins",
         {
           "displayName": "Signet App",
-          "bundleIdentifier": "xyz.nirapod.signet.example"
+          "bundleIdentifier": "org.nirapod.signet.example"
         }
       ]
     ]

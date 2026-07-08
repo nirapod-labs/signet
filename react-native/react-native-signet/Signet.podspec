@@ -27,9 +27,9 @@ Pod::Spec.new do |s|
   add_nitrogen_files(s)
 
   # The shared Apple core. Linked dev-local by the consumer Podfile
-  # (pod 'SignetAppleCore', :path => '../../apple') until it is a published pod;
+  # (pod 'SignetCore', :path => '../../apple') until it is a published pod;
   # see VERIFICATION.md.
-  s.dependency 'SignetAppleCore'
+  s.dependency 'SignetCore'
   s.dependency 'React-jsi'
   s.dependency 'React-callinvoker'
   install_modules_dependencies(s)

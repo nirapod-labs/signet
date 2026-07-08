@@ -12,7 +12,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation("xyz.nirapod:signet:0.1.0-SNAPSHOT")
+            implementation("org.nirapod:signet:0.1.0-SNAPSHOT")
         }
     }
 }

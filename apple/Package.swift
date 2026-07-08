@@ -4,24 +4,24 @@
 import PackageDescription
 
 let package = Package(
-    name: "SignetAppleCore",
+    name: "SignetCore",
     platforms: [.iOS(.v15), .macOS(.v12)],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
-            name: "SignetAppleCore",
-            targets: ["SignetAppleCore"]
+            name: "SignetCore",
+            targets: ["SignetCore"]
         ),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "SignetAppleCore"
+            name: "SignetCore"
         ),
         .testTarget(
-            name: "SignetAppleCoreTests",
-            dependencies: ["SignetAppleCore"]
+            name: "SignetCoreTests",
+            dependencies: ["SignetCore"]
         ),
     ],
     swiftLanguageModes: [.v6]

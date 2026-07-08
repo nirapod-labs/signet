@@ -1,4 +1,4 @@
-# SignetAppleCore verification
+# SignetCore verification
 
 The Apple core's security claims rest on the Secure Enclave. This records which
 are checked by a test against a real Enclave here, and which need a signed

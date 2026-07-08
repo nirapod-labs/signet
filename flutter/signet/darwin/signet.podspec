@@ -16,9 +16,9 @@ Hardware-backed P-256 signing keys via the Apple Secure Enclave and Android Keys
   s.source           = { :path => '.' }
   s.source_files     = 'Classes/**/*.swift'
   # The apple/ core, consumed as a local pod. The example Podfiles (and a consumer
-  # Podfile) point SignetAppleCore at apple/ by relative path until the core is
+  # Podfile) point SignetCore at apple/ by relative path until the core is
   # published as a versioned pod; apple/ stays the single source of truth.
-  s.dependency 'SignetAppleCore'
+  s.dependency 'SignetCore'
   s.ios.dependency 'Flutter'
   s.osx.dependency 'FlutterMacOS'
   s.ios.deployment_target = '15.0'

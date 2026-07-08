@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "xyz.nirapod.signet"
+    namespace = "org.nirapod.signet"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {

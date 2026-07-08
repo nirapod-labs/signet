@@ -6,8 +6,8 @@ import 'package:pigeon/pigeon.dart';
 @ConfigurePigeon(
   PigeonOptions(
     dartOut: 'lib/src/messages.g.dart',
-    kotlinOut: 'android/src/main/kotlin/xyz/nirapod/signet/Messages.g.kt',
-    kotlinOptions: KotlinOptions(package: 'xyz.nirapod.signet'),
+    kotlinOut: 'android/src/main/kotlin/org/nirapod/signet/Messages.g.kt',
+    kotlinOptions: KotlinOptions(package: 'org.nirapod.signet'),
     swiftOut: 'darwin/Classes/Messages.g.swift',
     dartPackageName: 'signet',
     copyrightHeader: 'pigeons/copyright.txt',

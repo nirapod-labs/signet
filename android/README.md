@@ -1,4 +1,4 @@
-# android/ (signet-android-core)
+# android/ (signet-core)
 
 The Android native core: a Kotlin/Gradle library over `AndroidKeyStore`, providing hardware-backed P-256 keys with the StrongBox to TEE ladder, `BiometricPrompt` auth-gated signing, and X.509 key attestation. This is the single source of truth for Android; the `react-native/`, `flutter/`, and `kmp/` bindings reference it.
 

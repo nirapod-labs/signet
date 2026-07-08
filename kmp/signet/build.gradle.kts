@@ -9,7 +9,7 @@ plugins {
     alias(libs.plugins.vanniktech.mavenPublish)
 }
 
-group = "xyz.nirapod"
+group = "org.nirapod"
 version = "0.1.0-SNAPSHOT"
 
 kotlin {
@@ -19,7 +19,7 @@ kotlin {
     }
 
     androidLibrary {
-        namespace = "xyz.nirapod.signet"
+        namespace = "org.nirapod.signet"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 
@@ -40,8 +40,8 @@ kotlin {
     sourceSets {
         val androidMain by getting {
             // Compile the android/ core in-module. commonMain owns the KMP contract
-            // types under xyz.nirapod.signet.kmp; the core keeps its own
-            // xyz.nirapod.signet types in a separate package, and androidMain
+            // types under org.nirapod.signet.kmp; the core keeps its own
+            // org.nirapod.signet types in a separate package, and androidMain
             // translates between them.
             kotlin.srcDir("../../android/src/main/kotlin")
             dependencies {

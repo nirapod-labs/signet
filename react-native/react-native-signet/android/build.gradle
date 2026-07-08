@@ -36,7 +36,7 @@ def getExtOrIntegerDefault(name) {
 }
 
 android {
-  namespace "xyz.nirapod.signet"
+  namespace "org.nirapod.signet"
 
   ndkVersion getExtOrDefault("ndkVersion")
   compileSdkVersion getExtOrIntegerDefault("compileSdkVersion")
@@ -153,6 +153,6 @@ if (isNewArchitectureEnabled()) {
   react {
     jsRootDir = file("../src/")
     libraryName = "Signet"
-    codegenJavaPackageName = "xyz.nirapod.signet"
+    codegenJavaPackageName = "org.nirapod.signet"
   }
 }

@@ -3,7 +3,7 @@
 
 import Foundation
 import NitroModules
-import SignetAppleCore
+import SignetCore
 
 /// The Nitro HybridObject for iOS and macOS. Subclasses the generated
 /// `HybridSignetSpec` and forwards every call to `SecureEnclaveKeyStore` in the
@@ -13,7 +13,7 @@ import SignetAppleCore
 /// through the Secure Enclave and authenticates directly.
 ///
 /// The generated Nitro wire types share short names with the core (`KeySpec`,
-/// `SecurityTierReport`, ...); the core is always spelled `SignetAppleCore.` here
+/// `SecurityTierReport`, ...); the core is always spelled `SignetCore.` here
 /// and the unqualified names are the Nitro ones. Enums cross by their string token
 /// (`stringValue` / `fromString`), never by the Nitro case name, whose casing
 /// differs from the wire token.
@@ -44,7 +44,7 @@ final class HybridSignet: HybridSignetSpec {
     // synchronous call.
     let data = digest.toData(copyIfNeeded: true)
     let store = self.store
-    let coreOptions = SignetAppleCore.SignOptions(encoding: coreEncoding(options.encoding))
+    let coreOptions = SignetCore.SignOptions(encoding: coreEncoding(options.encoding))
     guard let prompt else {
       // Silent path: no prompt, the synchronous core sign.
       return Promise.async {
@@ -147,7 +147,7 @@ private extension SignetError {
 
 // ---- Nitro -> core (request side) ----
 
-private func coreKeySpec(_ spec: KeySpec) throws -> SignetAppleCore.KeySpec {
+private func coreKeySpec(_ spec: KeySpec) throws -> SignetCore.KeySpec {
   let policy: TierPolicy
   switch spec.tierPolicyKind.stringValue {
   case "strongest":
@@ -160,28 +160,28 @@ private func coreKeySpec(_ spec: KeySpec) throws -> SignetAppleCore.KeySpec {
   default:
     throw SignetError.invalidArgument
   }
-  let accessControl = SignetAppleCore.AccessControlPolicy(
+  let accessControl = SignetCore.AccessControlPolicy(
     authRequirement: coreAuthRequirement(spec.authRequirement),
     authValiditySeconds: spec.authValiditySeconds.map { Int($0) },
     invalidateOnBiometricEnrollment: spec.invalidateOnBiometricEnrollment
   )
   // The Secure Enclave has no per-key attestation, so the wire challenge has no
   // effect on Apple; getAttestation returns none regardless.
-  return SignetAppleCore.KeySpec(alias: spec.alias, tierPolicy: policy, accessControl: accessControl)
+  return SignetCore.KeySpec(alias: spec.alias, tierPolicy: policy, accessControl: accessControl)
 }
 
-private func coreHardwareClass(_ value: HardwareClass) -> SignetAppleCore.HardwareClass {
-  SignetAppleCore.HardwareClass(rawValue: value.stringValue) ?? .discreteSecure
+private func coreHardwareClass(_ value: HardwareClass) -> SignetCore.HardwareClass {
+  SignetCore.HardwareClass(rawValue: value.stringValue) ?? .discreteSecure
 }
 
 private func coreAuthRequirement(
   _ value: AuthRequirement
-) -> SignetAppleCore.AccessControlPolicy.AuthRequirement {
-  SignetAppleCore.AccessControlPolicy.AuthRequirement(rawValue: value.stringValue) ?? .none
+) -> SignetCore.AccessControlPolicy.AuthRequirement {
+  SignetCore.AccessControlPolicy.AuthRequirement(rawValue: value.stringValue) ?? .none
 }
 
-private func coreAuthPrompt(_ prompt: AuthPrompt) -> SignetAppleCore.AuthPrompt {
-  SignetAppleCore.AuthPrompt(
+private func coreAuthPrompt(_ prompt: AuthPrompt) -> SignetCore.AuthPrompt {
+  SignetCore.AuthPrompt(
     title: prompt.title,
     subtitle: prompt.subtitle,
     negativeButtonText: prompt.negativeButtonText,
@@ -193,13 +193,13 @@ private func coreFormat(_ value: PublicKeyFormat) -> PublicKey.Format {
   value.stringValue == "spki" ? .spki : .rawX962
 }
 
-private func coreEncoding(_ value: SignEncoding) -> SignetAppleCore.SignOptions.Encoding {
+private func coreEncoding(_ value: SignEncoding) -> SignetCore.SignOptions.Encoding {
   value.stringValue == "rawRS" ? .rawRS : .der
 }
 
 // ---- core -> Nitro (report side) ----
 
-private func nitroReport(_ report: SignetAppleCore.SecurityTierReport) -> SecurityTierReport {
+private func nitroReport(_ report: SignetCore.SecurityTierReport) -> SecurityTierReport {
   let (requestedKind, requestedAtLeastClass) = nitroRequested(report.requested)
   return SecurityTierReport(
     achieved: SecurityLevel(fromString: report.achieved.rawValue)!,
@@ -233,7 +233,7 @@ private func nitroFormat(_ value: PublicKey.Format) -> PublicKeyFormat {
   }
 }
 
-private func nitroAttestation(_ result: SignetAppleCore.AttestationResult) throws -> AttestationResult {
+private func nitroAttestation(_ result: SignetCore.AttestationResult) throws -> AttestationResult {
   let format: AttestationFormat
   switch result.format {
   case .androidKeyChain: format = AttestationFormat(fromString: "androidKeyChain")!
