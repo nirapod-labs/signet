@@ -7,7 +7,7 @@
   import Flutter
 #endif
 import Foundation
-import SignetAppleCore
+import SignetCore
 
 /// Flutter plugin entry point for the Signet Darwin binding (iOS and macOS).
 ///

@@ -29,7 +29,7 @@ Dart-only CI does not exercise:
   the same module.
 - iOS and macOS: `flutter build ios --no-codesign` and `flutter build macos`
   compile the shared `darwin/` plugin and link the `apple/` core as the
-  `SignetAppleCore` pod.
+  `SignetCore` pod.
 
 The cores are linked dev-local: the example Podfiles reference `../../../apple`
 by path and pin the iOS 15 / macOS 12 deployment targets the plugin needs. A

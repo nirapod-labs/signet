@@ -33,7 +33,7 @@ const packages = [
     declared: (text) => (text.match(/^version:\s*(\S+)/m) || [])[1],
   },
   {
-    name: 'xyz.nirapod:signet',
+    name: 'org.nirapod:signet',
     ecosystem: 'maven',
     file: 'kmp/signet/build.gradle.kts',
     declared: (text) => (text.match(/^version\s*=\s*"([^"]+)"/m) || [])[1],

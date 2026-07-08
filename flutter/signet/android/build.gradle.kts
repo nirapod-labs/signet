@@ -1,4 +1,4 @@
-group = "xyz.nirapod.signet"
+group = "org.nirapod.signet"
 version = "1.0-SNAPSHOT"
 
 buildscript {
@@ -26,7 +26,7 @@ plugins {
 }
 
 android {
-    namespace = "xyz.nirapod.signet"
+    namespace = "org.nirapod.signet"
 
     compileSdk = 36
 

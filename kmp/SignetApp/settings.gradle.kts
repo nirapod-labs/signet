@@ -18,6 +18,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "SignetApp"
 
-// Consume the sibling `xyz.nirapod:signet` from source instead of the published
+// Consume the sibling `org.nirapod:signet` from source instead of the published
 // coordinates.
 includeBuild("../signet")

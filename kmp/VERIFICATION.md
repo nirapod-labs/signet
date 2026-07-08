@@ -9,8 +9,8 @@ What is proven in this repository, and what is deferred to the device farm.
 
 The Android `actual` is a thin translation over the shipped `AndroidKeyStoreSigner`
 core. It re-implements no key handling: every call forwards to the core, and the
-only work in this layer is converting between the core's `xyz.nirapod.signet`
-contract types and the KMP `xyz.nirapod.signet.kmp` types.
+only work in this layer is converting between the core's `org.nirapod.signet`
+contract types and the KMP `org.nirapod.signet.kmp` types.
 
 Proven here (JVM host + compilation):
 

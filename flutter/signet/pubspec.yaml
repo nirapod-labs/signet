@@ -25,7 +25,7 @@ flutter:
     # macOS share one darwin/ source tree.
     platforms:
       android:
-        package: xyz.nirapod.signet
+        package: org.nirapod.signet
         pluginClass: SignetPlugin
       ios:
         pluginClass: SignetPlugin

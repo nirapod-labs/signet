@@ -22,4 +22,4 @@ cd signet
 ## Targets
 
 `androidLibrary`, `iosArm64`, `iosSimulatorArm64`, `macosArm64`. Coordinates
-`xyz.nirapod:signet`.
+`org.nirapod:signet`.

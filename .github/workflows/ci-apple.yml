@@ -16,7 +16,7 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Build and test SignetAppleCore
+      - name: Build and test SignetCore
         run: |
           cd apple
           swift build

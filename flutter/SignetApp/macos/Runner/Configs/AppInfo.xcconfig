@@ -8,7 +8,7 @@
 PRODUCT_NAME = signet_example
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = xyz.nirapod.signetExample
+PRODUCT_BUNDLE_IDENTIFIER = org.nirapod.signetExample
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 xyz.nirapod. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 org.nirapod. All rights reserved.
