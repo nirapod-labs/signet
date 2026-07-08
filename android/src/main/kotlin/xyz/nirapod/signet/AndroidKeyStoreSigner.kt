@@ -428,9 +428,8 @@ public class AndroidKeyStoreSigner(private val context: Context) {
                 policy.authValiditySeconds?.takeIf { it > 0 } ?: -1,
             )
         }
-        if (policy.invalidateOnBiometricEnrollment) {
-            builder.setInvalidatedByBiometricEnrollment(true)
-        }
+        // Platform default invalidates on enrollment; false (biometryAny) must be set explicitly.
+        builder.setInvalidatedByBiometricEnrollment(policy.invalidateOnBiometricEnrollment)
     }
 
     private fun keyInfoOf(privateKey: PrivateKey): KeyInfo {
