@@ -1,0 +1,28 @@
+---
+title: Introduction
+description: Hardware-backed P-256 signing across Flutter, React Native, and Kotlin Multiplatform.
+---
+
+Signet gives an application one API for a hardware-backed P-256 signing key across
+Flutter, React Native, and Kotlin Multiplatform. The key is generated inside the Apple
+Secure Enclave or the Android Keystore (StrongBox or the TEE) and never leaves that
+boundary: the app holds only an opaque handle and the public key.
+
+## Reported, not assumed
+
+Every key generation returns a security-tier report: the hardware tier the key actually
+landed in, the evidence that determined it, and whether a presence check is enforced.
+Signet reports the tier it achieved. It never claims one it cannot back.
+
+<Cards>
+  <Card title="Security model" href="/docs/security-model" description="Tiers, evidence, presence checks, and attestation." />
+  <Card title="GitHub" href="https://github.com/nirapod-labs/signet" description="Source, issues, and the cross-language contract." />
+</Cards>
+
+## Status
+
+Signet is pre-1.0 and in active development. The Apple Secure Enclave core and the
+Flutter and Kotlin Multiplatform bindings are the furthest along and run on real
+hardware; the React Native binding and the cross-language conformance suite are still
+landing. Nothing is published to pub.dev, npm, or Maven Central yet, so depend on it
+from a Git or path reference for now.

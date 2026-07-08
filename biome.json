@@ -13,6 +13,9 @@
       "**/Pods/**",
       "**/.dart_tool/**",
       "**/nitrogen/generated/**",
+      "**/.next/**",
+      "**/.source/**",
+      "docs/out/**",
       "react-native/SignetApp/**",
       "flutter/SignetApp/**"
     ]

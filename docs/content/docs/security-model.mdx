@@ -1,0 +1,56 @@
+---
+title: Security model
+description: What each hardware tier guarantees, how Signet determines it, and what it does not protect.
+---
+
+Signet's job is narrow and checkable: generate a P-256 key inside secure hardware, keep
+it there, and report, honestly, how strong that hardware actually is. Everything below is
+a property the code enforces, not a promise the docs make.
+
+## The private key never leaves hardware
+
+Keys are created non-exportable inside the Apple Secure Enclave or the Android Keystore.
+The application receives an opaque handle and the public key; no API returns private key
+bytes. A static check (`scripts/fence-check.sh`) fails the build if any surface tries to
+expose them.
+
+## The tier is reported, never assumed
+
+Every `generateKey` returns a `SecurityTierReport` naming the `SecurityLevel` the key
+actually landed in:
+
+| Level | Backing |
+| --- | --- |
+| `secureEnclave` | Apple Secure Enclave (discrete secure element) |
+| `strongBox` | Android StrongBox (discrete secure element) |
+| `tee` | Android Trusted Execution Environment |
+| `tpm` | Platform TPM |
+| `software` | No hardware backing |
+
+The report also carries the evidence for that claim (`TierEvidence`): only `attested` is
+cryptographic proof; `keyInfoReadback` and the rest are the platform's own word. The
+tiers form a partial order, not a single scale, so a StrongBox and a TPM are both
+discrete secure elements and a TEE is neither. Signet never silently downgrades: if you
+require a floor it cannot meet, generation fails.
+
+## Presence checks are bound at generation
+
+Whether a signature requires biometrics (or a device credential) is fixed when the key is
+created and enforced by the hardware, not by Signet. A gated key authenticates on every
+signature and cannot be made to sign silently; a silent key cannot later be upgraded to
+require a prompt. The report's `authEnforced` reflects what the hardware confirmed, and
+reads as unobservable when the platform will not say.
+
+## Attestation is produced, never verified
+
+On Android, Signet returns the `androidKeyChain` certificate chain with your challenge
+bound in at generation. It does not verify that chain: verification belongs off-device,
+at a relying party you control. The Apple Secure Enclave exposes no per-key attestation,
+so the format is `none`. Signet is honest about which one you got.
+
+## What Signet does not protect against
+
+- A compromised OS, or a rooted or jailbroken device that subverts the keystore itself.
+- Verifying attestation for you. That is the relying party's job.
+- Anything above the signing key: how you use signatures, your transport, and your
+  backend are all out of scope.

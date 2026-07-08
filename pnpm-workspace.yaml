@@ -8,6 +8,7 @@ packages:
   - "react-native/react-native-signet"
   - "conformance"
   - "examples/*"
+  - "docs"
   # SignetApp is a self-contained Expo app with its own lockfile; kept out
   # of the core workspace so its native dependency tree does not enter the core lockfile.
   - "!react-native/SignetApp"
