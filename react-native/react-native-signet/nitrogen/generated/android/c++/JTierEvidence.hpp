@@ -42,21 +42,12 @@ namespace margelo::nitro::signet {
     static jni::alias_ref<JTierEvidence> fromCpp(TierEvidence value) {
       static const auto clazz = javaClassStatic();
       switch (value) {
-        case TierEvidence::ATTESTED:
-          static const auto fieldATTESTED = clazz->getStaticField<JTierEvidence>("ATTESTED");
-          return clazz->getStaticFieldValue(fieldATTESTED);
         case TierEvidence::KEYINFOREADBACK:
           static const auto fieldKEYINFOREADBACK = clazz->getStaticField<JTierEvidence>("KEYINFOREADBACK");
           return clazz->getStaticFieldValue(fieldKEYINFOREADBACK);
         case TierEvidence::SETOKENPRESENT:
           static const auto fieldSETOKENPRESENT = clazz->getStaticField<JTierEvidence>("SETOKENPRESENT");
           return clazz->getStaticFieldValue(fieldSETOKENPRESENT);
-        case TierEvidence::INFERRED:
-          static const auto fieldINFERRED = clazz->getStaticField<JTierEvidence>("INFERRED");
-          return clazz->getStaticFieldValue(fieldINFERRED);
-        case TierEvidence::SELFREPORTUNVERIFIED:
-          static const auto fieldSELFREPORTUNVERIFIED = clazz->getStaticField<JTierEvidence>("SELFREPORTUNVERIFIED");
-          return clazz->getStaticFieldValue(fieldSELFREPORTUNVERIFIED);
         default:
           std::string stringValue = std::to_string(static_cast<int>(value));
           throw std::invalid_argument("Invalid enum value (" + stringValue + "!");

@@ -52,9 +52,9 @@ Proven here (compilation and the `SecureEnclaveTest` macOS host suite):
   the closed error set.
 - The Security.framework binding links and signs. A transient host P-256 key runs
   the real `SecKeyCreateSignature` path through the CFData bridging to a 64-byte
-  `r || s`, and exports a 65-byte X9.63 public key. This is a host software key,
-  not the Enclave, and it proves the binding, the algorithm selector, and the CF
-  memory handling against real Security.framework.
+  `r || s`, and exports a 65-byte X9.63 public key. This is a transient
+  host-generated test key, not the Enclave, and it proves the binding, the
+  algorithm selector, and the CF memory handling against real Security.framework.
 
 Deferred to the device farm (real Secure Enclave hardware):
 
@@ -101,7 +101,7 @@ and no biometry error codes, so it cannot present the gated prompt.
 KMP conformance is proven here by the binding's own suites, the Dart and RN
 precedent. `ContractTest` (commonTest) asserts the closed error set against
 `conformance/errors.json` (thirteen names, the `userCanceled` spelling), the tier
-partial order (`tpm` not below `tee`, `software` below every hardware class), the
+partial order (`strongBox` is `discreteSecure` and outranks `tee`), the
 closed-set sizes, and the shape defaults. `ConvertersTest` (androidHostTest) checks
 the android-core translation both directions.
 

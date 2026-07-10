@@ -38,8 +38,8 @@ line (`Signet.podspec` declares `:osx`).
 - The binding's Swift is unchanged from the iOS build and uses only cross-platform
   frameworks (Foundation, Security, LocalAuthentication, NitroModules), all present
   on macOS. A Mac with a usable Secure Enclave (Apple silicon, or a T2 Intel Mac)
-  signs; a Mac without one fails closed with `unavailableTier`, never a software
-  key, exactly as the core does on every Apple platform.
+  signs; a Mac without one fails closed, throwing `unavailableTier` instead of
+  producing a software-backed key, exactly as the core does on every Apple platform.
 - The full react-native-macos example app build, linking the binding pod against
   the React pods, is the local-build lane, as with every native path here.
 

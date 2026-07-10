@@ -271,13 +271,16 @@ String _tierName(SecurityLevel l) => switch (l) {
       SecurityLevel.secureEnclave => 'Secure Enclave',
       SecurityLevel.strongBox => 'StrongBox',
       SecurityLevel.tee => 'Trusted environment',
-      SecurityLevel.tpm => 'TPM',
-      SecurityLevel.software => 'Software',
+    };
+
+String _tierShort(SecurityLevel l) => switch (l) {
+      SecurityLevel.secureEnclave => 'SE',
+      SecurityLevel.strongBox => 'StrongBox',
+      SecurityLevel.tee => 'TEE',
     };
 
 String _policyName(TierPolicy p) => switch (p) {
       Strongest() => 'strongest',
-      BestEffort() => 'best effort',
       AtLeast(:final floor) => 'at least ${floor.name}',
     };
 
@@ -296,9 +299,7 @@ IconData _authIcon(AuthRequirement r) => switch (r) {
 String _encName(SignEncoding e) => e == SignEncoding.der ? 'DER' : 'raw r‖s';
 
 bool _isSecure(SecurityLevel? l) =>
-    l == SecurityLevel.secureEnclave ||
-    l == SecurityLevel.strongBox ||
-    l == SecurityLevel.tpm;
+    l == SecurityLevel.secureEnclave || l == SecurityLevel.strongBox;
 
 String _hex(Uint8List b, {int max = 22}) {
   final head = b.take(max).map((x) => x.toRadixString(16).padLeft(2, '0'));
@@ -536,8 +537,6 @@ class _KeysScreenState extends State<KeysScreen> {
                         HardwareClass.trustedEnvironment,
                 onTap: () => c.setPolicy(
                     const AtLeast(HardwareClass.trustedEnvironment))),
-            _Choice('Best effort', selected: c.policy is BestEffort,
-                onTap: () => c.setPolicy(const BestEffort())),
           ]),
           const SizedBox(height: 18),
           const _Label('Presence check (auth requirement)'),
@@ -1001,7 +1000,6 @@ class TierHero extends StatelessWidget {
             if (r != null) ...[
               const SizedBox(height: 14),
               Wrap(spacing: 8, runSpacing: 8, children: [
-                _HeroChip('meets floor', r.meetsFloor ? 'yes' : 'no'),
                 _HeroChip('auth', r.authEnforced?.name ?? 'none'),
                 _HeroChip('schema', 'v${r.schemaVersion}'),
               ]),
@@ -1060,7 +1058,7 @@ class TierPill extends StatelessWidget {
     final label = r == null
         ? 'probing'
         : compact
-            ? (secure ? 'SE' : _tierName(r.achieved))
+            ? _tierShort(r.achieved)
             : _tierName(r.achieved);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
@@ -1200,8 +1198,6 @@ class ReportCard extends StatelessWidget {
       child: Column(children: [
         _row('achieved', _tierName(r.achieved)),
         _row('requested', r.requested == null ? 'null' : _policyName(r.requested!)),
-        _row('meets floor', r.meetsFloor ? 'yes' : 'no',
-            color: r.meetsFloor ? _emeraldOn : _danger),
         _row('evidence', r.evidence.name),
         _row('auth enforced', r.authEnforced?.name ?? 'unobservable'),
         _row('invalidated', '${r.invalidated}',
@@ -1417,8 +1413,6 @@ class TierLadder extends StatelessWidget {
       rung('Secure Enclave / StrongBox', 'discrete secure element', _emerald),
       const Divider(),
       rung('Trusted environment', 'TEE, on the main SoC', _brass),
-      const Divider(),
-      rung('Software', 'no hardware backing', const Color(0xFF9AA0A6)),
     ]);
   }
 }

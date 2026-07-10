@@ -32,7 +32,6 @@ void main() {
       expect(host.lastGenerateSpec!.atLeastClass, isNull);
       expect(report.achieved, SecurityLevel.secureEnclave);
       expect(report.evidence, TierEvidence.seTokenPresent);
-      expect(report.meetsFloor, isTrue);
       expect(report.requested, isNull);
       expect(report.authEnforced, isNull);
     });
@@ -50,18 +49,6 @@ void main() {
 
       expect(host.lastGenerateSpec!.tierPolicyKind, TierPolicyKindWire.atLeast);
       expect(host.lastGenerateSpec!.atLeastClass, HardwareClassWire.discreteSecure);
-    });
-
-    test('BestEffort maps to its kind with no class', () async {
-      host.generateResult = GenerateResultWire(
-        handleId: 'k',
-        report: _report(SecurityLevelWire.software),
-      );
-
-      await signet.generateKey(alias: 'k', tierPolicy: const BestEffort());
-
-      expect(host.lastGenerateSpec!.tierPolicyKind, TierPolicyKindWire.bestEffort);
-      expect(host.lastGenerateSpec!.atLeastClass, isNull);
     });
 
     test('forwards the attestation challenge', () async {
@@ -114,7 +101,6 @@ void main() {
         () async {
       host.tierResult = SecurityTierReportWire(
         achieved: SecurityLevelWire.tee,
-        meetsFloor: true,
         evidence: TierEvidenceWire.keyInfoReadback,
         invalidated: false,
         schemaVersion: 1,
@@ -134,7 +120,6 @@ void main() {
         achieved: SecurityLevelWire.strongBox,
         requestedKind: TierPolicyKindWire.atLeast,
         requestedAtLeastClass: HardwareClassWire.discreteSecure,
-        meetsFloor: true,
         evidence: TierEvidenceWire.keyInfoReadback,
         authEnforced: AuthClassWire.biometricOrDeviceCredential,
         invalidated: false,
@@ -299,7 +284,6 @@ void main() {
 SecurityTierReportWire _report(SecurityLevelWire achieved) =>
     SecurityTierReportWire(
       achieved: achieved,
-      meetsFloor: true,
       evidence: achieved == SecurityLevelWire.secureEnclave
           ? TierEvidenceWire.seTokenPresent
           : TierEvidenceWire.keyInfoReadback,

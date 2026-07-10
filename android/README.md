@@ -6,7 +6,7 @@ The design requests StrongBox, catches `StrongBoxUnavailableException`, falls ba
 
 ## Status
 
-Scaffold: the module builds with a placeholder surface and no key code yet. The behavior above is the design that the key code implements and proves in tests.
+The Keystore core ships. `AndroidKeyStoreSigner` implements key generation, silent and auth-gated signing, tier read-back, and X.509 key attestation against `AndroidKeyStore`. There is no software-key path: a key that cannot be created in secure hardware is deleted and the call fails closed (`unavailableTier`). JVM unit tests cover the pure logic; the live-Keystore behavior runs on the instrumented lane. See `VERIFICATION.md`.
 
 ## Build
 

@@ -42,8 +42,9 @@ example's generated Xcode projects are gitignored and regenerated locally.
 `flutter/SignetApp/integration_test` runs against the real key store on a
 connected device or emulator; it is not run by CI. It covers:
 
-- The non-interactive surface end to end: generate (best effort), read the
-  public key, sign a digest, delete.
+- The non-interactive surface end to end: generate a key, read the public key,
+  sign a digest, delete. Generation fails closed on a device or emulator with no
+  secure hardware; a software-only Keystore is rejected, not reported as a tier.
 - Gated-key generation reporting its auth class. Generating a gated key does not
   prompt; it needs an enrolled biometric on the device.
 

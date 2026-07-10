@@ -17,16 +17,10 @@ public extension TierEvidence {
    */
   init?(fromString string: String) {
     switch string {
-      case "attested":
-        self = .attested
       case "keyInfoReadback":
         self = .keyinforeadback
       case "seTokenPresent":
         self = .setokenpresent
-      case "inferred":
-        self = .inferred
-      case "selfReportUnverified":
-        self = .selfreportunverified
       default:
         return nil
     }
@@ -37,16 +31,10 @@ public extension TierEvidence {
    */
   var stringValue: String {
     switch self {
-      case .attested:
-        return "attested"
       case .keyinforeadback:
         return "keyInfoReadback"
       case .setokenpresent:
         return "seTokenPresent"
-      case .inferred:
-        return "inferred"
-      case .selfreportunverified:
-        return "selfReportUnverified"
     }
   }
 }

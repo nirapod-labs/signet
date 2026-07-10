@@ -17,8 +17,7 @@ import com.facebook.proguard.annotations.DoNotStrip
 @Keep
 enum class TierPolicyKind(@DoNotStrip @Keep val value: Int) {
   STRONGEST(0),
-  ATLEAST(1),
-  BESTEFFORT(2);
+  ATLEAST(1);
 
   companion object
 }

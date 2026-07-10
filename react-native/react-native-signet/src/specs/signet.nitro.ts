@@ -11,15 +11,10 @@ import type { HybridObject } from 'react-native-nitro-modules'
 // side presents and authenticates directly.
 
 /** Hardware backing a key, reported as achieved and never assumed from the request. */
-export type SecurityLevel = 'secureEnclave' | 'strongBox' | 'tee' | 'tpm' | 'software'
+export type SecurityLevel = 'secureEnclave' | 'strongBox' | 'tee'
 
-/** How the achieved level was determined; only `attested` is cryptographic proof. */
-export type TierEvidence =
-  | 'attested'
-  | 'keyInfoReadback'
-  | 'seTokenPresent'
-  | 'inferred'
-  | 'selfReportUnverified'
+/** How the achieved level was determined from the created key. */
+export type TierEvidence = 'keyInfoReadback' | 'seTokenPresent'
 
 /** The presence check bound to a created key, reported in a tier report. */
 export type AuthClass =
@@ -35,7 +30,7 @@ export type AuthRequirement = 'none' | 'biometricOnly' | 'biometricOrDeviceCrede
 export type HardwareClass = 'discreteSecure' | 'trustedEnvironment'
 
 /** The tier-selection kind; `atLeast` carries its class in [KeySpec]. */
-export type TierPolicyKind = 'strongest' | 'atLeast' | 'bestEffort'
+export type TierPolicyKind = 'strongest' | 'atLeast'
 
 /** Signature wire encoding: X9.62 DER or fixed 64-byte r||s. */
 export type SignEncoding = 'der' | 'rawRS'
@@ -62,7 +57,6 @@ export interface SecurityTierReport {
   achieved: SecurityLevel
   requestedKind?: TierPolicyKind
   requestedAtLeastClass?: HardwareClass
-  meetsFloor: boolean
   evidence: TierEvidence
   authEnforced?: AuthClass
   invalidated: boolean

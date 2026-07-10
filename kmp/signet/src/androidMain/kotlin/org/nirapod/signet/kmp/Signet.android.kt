@@ -76,7 +76,6 @@ internal fun KeySpec.toCore(): CoreKeySpec =
 internal fun TierPolicy.toCore(): CoreTierPolicy = when (this) {
     TierPolicy.Strongest -> CoreTierPolicy.Strongest
     is TierPolicy.AtLeast -> CoreTierPolicy.AtLeast(hardwareClass.toCore())
-    TierPolicy.BestEffort -> CoreTierPolicy.BestEffort
 }
 
 internal fun HardwareClass.toCore(): CoreHardwareClass = when (this) {
@@ -108,7 +107,6 @@ internal fun SignOptions.Encoding.toCore(): CoreSignOptions.Encoding = when (thi
 internal fun CoreSecurityTierReport.toKmp(): SecurityTierReport = SecurityTierReport(
     achieved = achieved.toKmp(),
     requested = requested?.toKmp(),
-    meetsFloor = meetsFloor,
     evidence = evidence.toKmp(),
     authEnforced = authEnforced?.toKmp(),
     invalidated = invalidated,
@@ -116,17 +114,13 @@ internal fun CoreSecurityTierReport.toKmp(): SecurityTierReport = SecurityTierRe
 )
 
 internal fun CoreSecurityLevel.toKmp(): SecurityLevel = when (this) {
-    CoreSecurityLevel.secureEnclave -> SecurityLevel.secureEnclave
     CoreSecurityLevel.strongBox -> SecurityLevel.strongBox
     CoreSecurityLevel.tee -> SecurityLevel.tee
-    CoreSecurityLevel.tpm -> SecurityLevel.tpm
-    CoreSecurityLevel.software -> SecurityLevel.software
 }
 
 internal fun CoreTierPolicy.toKmp(): TierPolicy = when (this) {
     CoreTierPolicy.Strongest -> TierPolicy.Strongest
     is CoreTierPolicy.AtLeast -> TierPolicy.AtLeast(hardwareClass.toKmp())
-    CoreTierPolicy.BestEffort -> TierPolicy.BestEffort
 }
 
 internal fun CoreHardwareClass.toKmp(): HardwareClass = when (this) {
@@ -135,11 +129,7 @@ internal fun CoreHardwareClass.toKmp(): HardwareClass = when (this) {
 }
 
 internal fun CoreTierEvidence.toKmp(): TierEvidence = when (this) {
-    CoreTierEvidence.attested -> TierEvidence.attested
     CoreTierEvidence.keyInfoReadback -> TierEvidence.keyInfoReadback
-    CoreTierEvidence.seTokenPresent -> TierEvidence.seTokenPresent
-    CoreTierEvidence.inferred -> TierEvidence.inferred
-    CoreTierEvidence.selfReportUnverified -> TierEvidence.selfReportUnverified
 }
 
 internal fun CoreAuthClass.toKmp(): AuthClass = when (this) {

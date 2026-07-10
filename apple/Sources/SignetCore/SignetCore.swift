@@ -8,9 +8,4 @@
 public enum Signet {
     /// Library version, aligned with the repository VERSION file.
     public static let version = "0.1.0-dev"
-
-    /// Returns the platform tag of this core build.
-    public static func platformTag() -> String {
-        return "apple"
-    }
 }

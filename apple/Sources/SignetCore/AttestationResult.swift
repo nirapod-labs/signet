@@ -4,22 +4,17 @@
 import Foundation
 
 /// The result of `getAttestation`. On Apple the Secure Enclave has no per-key
-/// hardware attestation; `format` is always `none` and `chain` is empty. A
-/// certificate chain (`androidKeyChain`) is produced only where the platform
-/// supports key attestation. The attestation challenge is bound at key
-/// generation, never here.
+/// hardware attestation. `format` is always `none` and `chain` is always empty.
 public struct AttestationResult: Sendable, Equatable {
     /// The attestation wire format.
     public enum Format: String, Sendable, Equatable, CaseIterable {
-        /// A hardware key-attestation certificate chain.
-        case androidKeyChain
         /// No attestation is available for this key or platform.
         case none
     }
 
     public let format: Format
-    /// The certificate chain, one DER-encoded certificate per element. Empty
-    /// when `format` is `none`.
+    /// The certificate chain, one DER-encoded certificate per element. Always
+    /// empty on Apple, where `format` is always `none`.
     public let chain: [Data]
     public let schemaVersion: Int
 

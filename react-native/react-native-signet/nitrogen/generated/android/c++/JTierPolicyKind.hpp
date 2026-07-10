@@ -48,9 +48,6 @@ namespace margelo::nitro::signet {
         case TierPolicyKind::ATLEAST:
           static const auto fieldATLEAST = clazz->getStaticField<JTierPolicyKind>("ATLEAST");
           return clazz->getStaticFieldValue(fieldATLEAST);
-        case TierPolicyKind::BESTEFFORT:
-          static const auto fieldBESTEFFORT = clazz->getStaticField<JTierPolicyKind>("BESTEFFORT");
-          return clazz->getStaticFieldValue(fieldBESTEFFORT);
         default:
           std::string stringValue = std::to_string(static_cast<int>(value));
           throw std::invalid_argument("Invalid enum value (" + stringValue + "!");

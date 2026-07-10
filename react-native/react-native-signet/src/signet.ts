@@ -29,19 +29,16 @@ export type {
 /**
  * Tier selection by class, never a concrete [SecurityLevel]. The achieved level is
  * reported in [SecurityTierReport.achieved]. Ordering is a partial order over
- * classes: `discreteSecure {secureEnclave, strongBox, tpm} > tee > software`.
+ * classes: `discreteSecure {secureEnclave, strongBox} > trustedEnvironment {tee}`.
  */
 export type TierPolicy =
   | { readonly kind: 'strongest' }
   | { readonly kind: 'atLeast'; readonly floor: HardwareClass }
-  | { readonly kind: 'bestEffort' }
 
-/** The device's best hardware tier; fails `unavailableTier` if none, never software. */
+/** The strongest available hardware tier; fails closed with `unavailableTier` when no secure hardware is reachable. */
 export const strongest: TierPolicy = { kind: 'strongest' }
-/** A hard floor by class; fails `unavailableTier` below the class. */
+/** A hard floor by class; fails closed with `unavailableTier` below the class. */
 export const atLeast = (floor: HardwareClass): TierPolicy => ({ kind: 'atLeast', floor })
-/** Never fails on tier where a software keystore exists; may return a weaker level. */
-export const bestEffort: TierPolicy = { kind: 'bestEffort' }
 
 /** An opaque handle to a generated key. Carries no key material. */
 export interface KeyHandle {
@@ -56,7 +53,6 @@ export interface KeyHandle {
 export interface SecurityTierReport {
   readonly achieved: SecurityLevel
   readonly requested?: TierPolicy
-  readonly meetsFloor: boolean
   readonly evidence: TierEvidence
   readonly authEnforced?: AuthClass
   readonly invalidated: boolean
@@ -159,11 +155,10 @@ const native = NitroModules.createHybridObject<SignetSpec>('Signet')
 export const Signet = {
   /**
    * Generates a non-exportable P-256 key at [alias]. [tierPolicy] selects by class
-   * (default [strongest]); a hard policy below its floor fails `unavailableTier`,
-   * while [bestEffort] never fails on tier and its report carries
-   * `meetsFloor === false`. [accessControl] binds a presence check to the key
-   * (omitted means a silent key); a gated key needs an [AuthPrompt] at [sign]. An
-   * existing alias fails `keyAlreadyExists`.
+   * (default [strongest]); a policy whose floor is not met fails closed with
+   * `unavailableTier` and no key is kept. [accessControl] binds a presence check to
+   * the key (omitted means a silent key); a gated key needs an [AuthPrompt] at
+   * [sign]. An existing alias fails `keyAlreadyExists`.
    */
   generateKey(options: {
     alias: string
@@ -291,7 +286,6 @@ function reportFrom(report: {
   achieved: SecurityLevel
   requestedKind?: TierPolicyKind
   requestedAtLeastClass?: HardwareClass
-  meetsFloor: boolean
   evidence: TierEvidence
   authEnforced?: AuthClass
   invalidated: boolean
@@ -300,7 +294,6 @@ function reportFrom(report: {
   return {
     achieved: report.achieved,
     requested: tierPolicyFrom(report.requestedKind, report.requestedAtLeastClass),
-    meetsFloor: report.meetsFloor,
     evidence: report.evidence,
     authEnforced: report.authEnforced,
     invalidated: report.invalidated,
@@ -319,7 +312,5 @@ function tierPolicyFrom(
       return strongest
     case 'atLeast':
       return atLeast(atLeastClass as HardwareClass)
-    case 'bestEffort':
-      return bestEffort
   }
 }

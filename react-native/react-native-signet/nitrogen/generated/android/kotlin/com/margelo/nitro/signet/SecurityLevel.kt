@@ -18,9 +18,7 @@ import com.facebook.proguard.annotations.DoNotStrip
 enum class SecurityLevel(@DoNotStrip @Keep val value: Int) {
   SECUREENCLAVE(0),
   STRONGBOX(1),
-  TEE(2),
-  TPM(3),
-  SOFTWARE(4);
+  TEE(2);
 
   companion object
 }

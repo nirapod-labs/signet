@@ -196,14 +196,13 @@ class FlutterError (
 
 /**
  * Hardware backing a key, reported as achieved and never assumed from the
- * request. Crosses the channel as a pinned token, not an ordinal.
+ * request. Generated per build and crosses the channel as its declared ordinal,
+ * so append new members and never reorder.
  */
 enum class SecurityLevelWire(val raw: Int) {
   SECURE_ENCLAVE(0),
   STRONG_BOX(1),
-  TEE(2),
-  TPM(3),
-  SOFTWARE(4);
+  TEE(2);
 
   companion object {
     fun ofRaw(raw: Int): SecurityLevelWire? {
@@ -212,16 +211,10 @@ enum class SecurityLevelWire(val raw: Int) {
   }
 }
 
-/**
- * How the achieved level was determined. Only `attested` is cryptographic
- * proof; every other value is an on-device self-report.
- */
+/** How the achieved level was determined. */
 enum class TierEvidenceWire(val raw: Int) {
-  ATTESTED(0),
-  KEY_INFO_READBACK(1),
-  SE_TOKEN_PRESENT(2),
-  INFERRED(3),
-  SELF_REPORT_UNVERIFIED(4);
+  KEY_INFO_READBACK(0),
+  SE_TOKEN_PRESENT(1);
 
   companion object {
     fun ofRaw(raw: Int): TierEvidenceWire? {
@@ -233,8 +226,7 @@ enum class TierEvidenceWire(val raw: Int) {
 /** The tier-selection policy kind. `atLeast` carries its class in [KeySpecWire]. */
 enum class TierPolicyKindWire(val raw: Int) {
   STRONGEST(0),
-  AT_LEAST(1),
-  BEST_EFFORT(2);
+  AT_LEAST(1);
 
   companion object {
     fun ofRaw(raw: Int): TierPolicyKindWire? {
@@ -412,7 +404,6 @@ data class SecurityTierReportWire (
   val achieved: SecurityLevelWire,
   val requestedKind: TierPolicyKindWire? = null,
   val requestedAtLeastClass: HardwareClassWire? = null,
-  val meetsFloor: Boolean,
   val evidence: TierEvidenceWire,
   val authEnforced: AuthClassWire? = null,
   val invalidated: Boolean,
@@ -424,12 +415,11 @@ data class SecurityTierReportWire (
       val achieved = pigeonVar_list[0] as SecurityLevelWire
       val requestedKind = pigeonVar_list[1] as TierPolicyKindWire?
       val requestedAtLeastClass = pigeonVar_list[2] as HardwareClassWire?
-      val meetsFloor = pigeonVar_list[3] as Boolean
-      val evidence = pigeonVar_list[4] as TierEvidenceWire
-      val authEnforced = pigeonVar_list[5] as AuthClassWire?
-      val invalidated = pigeonVar_list[6] as Boolean
-      val schemaVersion = pigeonVar_list[7] as Long
-      return SecurityTierReportWire(achieved, requestedKind, requestedAtLeastClass, meetsFloor, evidence, authEnforced, invalidated, schemaVersion)
+      val evidence = pigeonVar_list[3] as TierEvidenceWire
+      val authEnforced = pigeonVar_list[4] as AuthClassWire?
+      val invalidated = pigeonVar_list[5] as Boolean
+      val schemaVersion = pigeonVar_list[6] as Long
+      return SecurityTierReportWire(achieved, requestedKind, requestedAtLeastClass, evidence, authEnforced, invalidated, schemaVersion)
     }
   }
   fun toList(): List<Any?> {
@@ -437,7 +427,6 @@ data class SecurityTierReportWire (
       achieved,
       requestedKind,
       requestedAtLeastClass,
-      meetsFloor,
       evidence,
       authEnforced,
       invalidated,
@@ -452,7 +441,7 @@ data class SecurityTierReportWire (
       return true
     }
     val other = other as SecurityTierReportWire
-    return MessagesPigeonUtils.deepEquals(this.achieved, other.achieved) && MessagesPigeonUtils.deepEquals(this.requestedKind, other.requestedKind) && MessagesPigeonUtils.deepEquals(this.requestedAtLeastClass, other.requestedAtLeastClass) && MessagesPigeonUtils.deepEquals(this.meetsFloor, other.meetsFloor) && MessagesPigeonUtils.deepEquals(this.evidence, other.evidence) && MessagesPigeonUtils.deepEquals(this.authEnforced, other.authEnforced) && MessagesPigeonUtils.deepEquals(this.invalidated, other.invalidated) && MessagesPigeonUtils.deepEquals(this.schemaVersion, other.schemaVersion)
+    return MessagesPigeonUtils.deepEquals(this.achieved, other.achieved) && MessagesPigeonUtils.deepEquals(this.requestedKind, other.requestedKind) && MessagesPigeonUtils.deepEquals(this.requestedAtLeastClass, other.requestedAtLeastClass) && MessagesPigeonUtils.deepEquals(this.evidence, other.evidence) && MessagesPigeonUtils.deepEquals(this.authEnforced, other.authEnforced) && MessagesPigeonUtils.deepEquals(this.invalidated, other.invalidated) && MessagesPigeonUtils.deepEquals(this.schemaVersion, other.schemaVersion)
   }
 
   override fun hashCode(): Int {
@@ -460,7 +449,6 @@ data class SecurityTierReportWire (
     result = 31 * result + MessagesPigeonUtils.deepHash(this.achieved)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.requestedKind)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.requestedAtLeastClass)
-    result = 31 * result + MessagesPigeonUtils.deepHash(this.meetsFloor)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.evidence)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.authEnforced)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.invalidated)
@@ -468,7 +456,7 @@ data class SecurityTierReportWire (
     return result
   }
   override fun toString(): String {
-    return "SecurityTierReportWire(achieved=$achieved, requestedKind=$requestedKind, requestedAtLeastClass=$requestedAtLeastClass, meetsFloor=$meetsFloor, evidence=$evidence, authEnforced=$authEnforced, invalidated=$invalidated, schemaVersion=$schemaVersion)"
+    return "SecurityTierReportWire(achieved=$achieved, requestedKind=$requestedKind, requestedAtLeastClass=$requestedAtLeastClass, evidence=$evidence, authEnforced=$authEnforced, invalidated=$invalidated, schemaVersion=$schemaVersion)"
   }
 }
 

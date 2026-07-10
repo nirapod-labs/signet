@@ -1,17 +1,19 @@
-# signet_example
+# SignetApp
 
-Demonstrates how to use the signet plugin.
+The example app for the `signet` plugin. It drives the plugin against the real
+platform key store: generating a non-exportable P-256 key in secure hardware,
+reading its public key, signing a digest, running an auth-gated sign, and showing
+the security tier report the native core reads back from the created key.
 
-## Getting Started
+## Running
 
-This project is a starting point for a Flutter application.
+```sh
+flutter run
+```
 
-A few resources to get you started if this is your first Flutter project:
+Run it on a physical device to reach the Secure Enclave (iOS and macOS) or a
+StrongBox or TEE-backed Keystore (Android). On a device or emulator with no secure
+hardware, key generation fails closed rather than falling back to a software key.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+The device-lane integration tests are in `integration_test/`; see
+`flutter/VERIFICATION.md` for what each layer proves.

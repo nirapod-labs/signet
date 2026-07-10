@@ -156,8 +156,6 @@ private extension KeySpecWire {
     case .atLeast:
       guard let atLeastClass else { throw SignetError.invalidArgument }
       policy = .atLeast(atLeastClass.toCore())
-    case .bestEffort:
-      policy = .bestEffort
     }
     let accessControl = AccessControlPolicy(
       authRequirement: authRequirement.toCore(),
@@ -227,7 +225,6 @@ private extension SecurityTierReport {
       achieved: achieved.toWire(),
       requestedKind: requestedKind,
       requestedAtLeastClass: requestedAtLeastClass,
-      meetsFloor: meetsFloor,
       evidence: evidence.toWire(),
       authEnforced: authEnforced?.toWire(),
       invalidated: invalidated,
@@ -243,7 +240,6 @@ private func requestedToWire(
   case nil: return (nil, nil)
   case .strongest?: return (.strongest, nil)
   case .atLeast(let hardwareClass)?: return (.atLeast, hardwareClass.toWire())
-  case .bestEffort?: return (.bestEffort, nil)
   }
 }
 
@@ -251,7 +247,6 @@ private extension AttestationResult {
   func toWire() -> AttestationResultWire {
     let wireFormat: AttestationFormatWire
     switch format {
-    case .androidKeyChain: wireFormat = .androidKeyChain
     case .none: wireFormat = .none
     }
     let wireChain: [FlutterStandardTypedData?]? =
@@ -268,10 +263,6 @@ private extension SecurityLevel {
   func toWire() -> SecurityLevelWire {
     switch self {
     case .secureEnclave: return .secureEnclave
-    case .strongBox: return .strongBox
-    case .tee: return .tee
-    case .tpm: return .tpm
-    case .software: return .software
     }
   }
 }
@@ -279,11 +270,7 @@ private extension SecurityLevel {
 private extension TierEvidence {
   func toWire() -> TierEvidenceWire {
     switch self {
-    case .attested: return .attested
-    case .keyInfoReadback: return .keyInfoReadback
     case .seTokenPresent: return .seTokenPresent
-    case .inferred: return .inferred
-    case .selfReportUnverified: return .selfReportUnverified
     }
   }
 }

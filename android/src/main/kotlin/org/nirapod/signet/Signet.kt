@@ -6,10 +6,12 @@ package org.nirapod.signet
 /**
  * Signet Android core entry point.
  *
- * Scaffold: the module compiles with no AndroidKeyStore access and no export
- * symbol declared anywhere. The hardware-backed P-256 surface, the StrongBox to
- * TEE ladder, and key attestation are added with the key code and proven in
- * tests.
+ * The hardware-backed P-256 surface ships in [AndroidKeyStoreSigner]: key
+ * generation in the platform Keystore (StrongBox where available, otherwise the
+ * TEE), silent and auth-gated signing over `BiometricPrompt`, tier read-back,
+ * and X.509 key attestation. There is no software-key path; a request that
+ * cannot be met in secure hardware fails closed. This object exposes only the
+ * library version.
  */
 public object Signet {
     /** Library version, aligned with the repository VERSION file. */

@@ -32,8 +32,6 @@ namespace margelo::nitro::signet {
     SECUREENCLAVE      SWIFT_NAME(secureenclave) = 0,
     STRONGBOX      SWIFT_NAME(strongbox) = 1,
     TEE      SWIFT_NAME(tee) = 2,
-    TPM      SWIFT_NAME(tpm) = 3,
-    SOFTWARE      SWIFT_NAME(software) = 4,
   } CLOSED_ENUM;
 
 } // namespace margelo::nitro::signet
@@ -49,8 +47,6 @@ namespace margelo::nitro {
         case hashString("secureEnclave"): return margelo::nitro::signet::SecurityLevel::SECUREENCLAVE;
         case hashString("strongBox"): return margelo::nitro::signet::SecurityLevel::STRONGBOX;
         case hashString("tee"): return margelo::nitro::signet::SecurityLevel::TEE;
-        case hashString("tpm"): return margelo::nitro::signet::SecurityLevel::TPM;
-        case hashString("software"): return margelo::nitro::signet::SecurityLevel::SOFTWARE;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum SecurityLevel - invalid value!");
       }
@@ -60,8 +56,6 @@ namespace margelo::nitro {
         case margelo::nitro::signet::SecurityLevel::SECUREENCLAVE: return JSIConverter<std::string>::toJSI(runtime, "secureEnclave");
         case margelo::nitro::signet::SecurityLevel::STRONGBOX: return JSIConverter<std::string>::toJSI(runtime, "strongBox");
         case margelo::nitro::signet::SecurityLevel::TEE: return JSIConverter<std::string>::toJSI(runtime, "tee");
-        case margelo::nitro::signet::SecurityLevel::TPM: return JSIConverter<std::string>::toJSI(runtime, "tpm");
-        case margelo::nitro::signet::SecurityLevel::SOFTWARE: return JSIConverter<std::string>::toJSI(runtime, "software");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert SecurityLevel to JS - invalid value: "
                                     + std::to_string(static_cast<int>(arg)) + "!");
@@ -76,8 +70,6 @@ namespace margelo::nitro {
         case hashString("secureEnclave"):
         case hashString("strongBox"):
         case hashString("tee"):
-        case hashString("tpm"):
-        case hashString("software"):
           return true;
         default:
           return false;

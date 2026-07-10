@@ -13,7 +13,14 @@
     "build": "npm run typecheck && bob build",
     "codegen": "nitrogen --logLevel=\"debug\" && npm run build && node post-script.js"
   },
-  "keywords": ["react-native", "react-native-signet", "nitro", "secure-enclave", "strongbox"],
+  "keywords": [
+    "react-native",
+    "react-native-signet",
+    "nitro",
+    "secure-enclave",
+    "strongbox",
+    "tee"
+  ],
   "files": [
     "src",
     "react-native.config.js",

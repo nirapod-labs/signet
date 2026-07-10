@@ -106,8 +106,8 @@ import kotlinx.coroutines.withContext
  * Keys are created non-exportable in the Secure Enclave. No key material crosses
  * this boundary and there is no export path: the outputs are a handle, a public
  * key, a signature, an attestation, and a tier report, never private-key bytes.
- * Secure Enclave creation failure raises [SignetErrorCode.unavailableTier]; the
- * store never falls back to software.
+ * Secure Enclave creation failure fails closed with [SignetErrorCode.unavailableTier];
+ * the store never produces a software-backed key.
  */
 public actual class Signet {
     private val store = SecureEnclaveKeyStore()
@@ -180,7 +180,7 @@ internal class SecureEnclaveKeyStore {
             val error = alloc<CFErrorRefVar>()
             val key = SecKeyCreateRandomKey(attributes, error.ptr)
             if (key == null) {
-                // Never fall back to software.
+                // Fail closed: no software-backed key is created here.
                 val code = error.value?.let { cfError ->
                     val c = CFErrorGetCode(cfError).convert<Long>()
                     CFRelease(cfError)
@@ -193,7 +193,6 @@ internal class SecureEnclaveKeyStore {
             val report = SecurityTierReport(
                 achieved = SecurityLevel.secureEnclave,
                 requested = spec.tierPolicy,
-                meetsFloor = spec.tierPolicy.isMet(SecurityLevel.secureEnclave, SecurityLevel.secureEnclave),
                 evidence = TierEvidence.seTokenPresent,
                 authEnforced = authClass(spec.accessControl),
                 invalidated = false,
@@ -300,7 +299,6 @@ internal class SecureEnclaveKeyStore {
         return SecurityTierReport(
             achieved = SecurityLevel.secureEnclave,
             requested = null,
-            meetsFloor = true,
             evidence = TierEvidence.seTokenPresent,
             authEnforced = null,
             invalidated = false,
@@ -525,7 +523,7 @@ private fun leftPad32(value: ByteArray): ByteArray? {
  * Maps a `SecKeyCreateRandomKey` failure code to the closed error set.
  * `errSecInteractionNotAllowed` (locked device) is a transient hardware failure,
  * not a tier absence. `errSecDuplicateItem` is `keyAlreadyExists`. Every other
- * code is `unavailableTier`; never software.
+ * code fails closed as `unavailableTier`.
  */
 internal fun mapCreationFailure(code: Long): SignetErrorCode = when (code) {
     errSecInteractionNotAllowed.convert<Long>() -> SignetErrorCode.hardwareError

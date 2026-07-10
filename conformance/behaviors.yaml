@@ -10,19 +10,16 @@ behaviors:
     assert: getSecurityTier reports the achieved tier, never an assumed or requested one.
   - id: tier.policyFloorFails
     status: pending
-    assert: tierPolicy strongest fails unavailableTier when no hardware is available; atLeast(class) fails unavailableTier below the class; software is never returned by either.
-  - id: tier.bestEffortSoftwareFlagged
+    assert: tierPolicy strongest fails unavailableTier when no secure hardware is available; atLeast(class) fails unavailableTier when the requested floor is not met by available hardware; a below-floor key is deleted, never returned.
+  - id: tier.returnedKeySatisfiesFloor
     status: pending
-    assert: tierPolicy bestEffort never fails on tier and may return software, always with meetsFloor=false and evidence=selfReportUnverified; achieved is honest, never inflated.
-  - id: tier.meetsFloorHonest
-    status: pending
-    assert: a successful strongest or atLeast return has meetsFloor=true; meetsFloor=false appears only on a bestEffort below-class result.
+    assert: a returned SecurityTierReport always satisfies the requested tierPolicy floor; a key that would fall below the floor is deleted and the call fails unavailableTier.
   - id: tier.invalidatedKeyNoThrow
     status: pending
     assert: getSecurityTier does not throw on an invalidated-but-not-deleted key; it returns a report the caller can inspect.
   - id: provenance.appleNeverAttested
     status: pending
-    assert: Apple SE reports evidence=seTokenPresent, never attested.
+    assert: Apple SE reports evidence=seTokenPresent and performs no tier attestation.
   - id: key.noPrivateExport
     status: pending
     assert: no surface, generated or hand-written, exposes a private-key export path.

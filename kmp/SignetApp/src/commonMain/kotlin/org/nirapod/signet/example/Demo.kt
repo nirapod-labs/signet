@@ -29,7 +29,7 @@ public object SignetDemo {
         log += "signature: ${signature.size} bytes as der"
 
         val tier = signet.getSecurityTier(result.handle)
-        log += "tier re-read: achieved=${tier.achieved} meetsFloor=${tier.meetsFloor}"
+        log += "tier re-read: achieved=${tier.achieved} invalidated=${tier.invalidated}"
 
         val attestation = signet.getAttestation(result.handle)
         log += "attestation: format=${attestation.format} certs=${attestation.chain.size}"

@@ -16,11 +16,8 @@ import com.facebook.proguard.annotations.DoNotStrip
 @DoNotStrip
 @Keep
 enum class TierEvidence(@DoNotStrip @Keep val value: Int) {
-  ATTESTED(0),
-  KEYINFOREADBACK(1),
-  SETOKENPRESENT(2),
-  INFERRED(3),
-  SELFREPORTUNVERIFIED(4);
+  KEYINFOREADBACK(0),
+  SETOKENPRESENT(1);
 
   companion object
 }

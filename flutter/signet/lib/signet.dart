@@ -20,17 +20,10 @@ import 'src/messages.g.dart';
 
 /// The hardware backing a signing key, reported as the achieved level and never
 /// assumed from the request.
-enum SecurityLevel { secureEnclave, strongBox, tee, tpm, software }
+enum SecurityLevel { secureEnclave, strongBox, tee }
 
-/// How the achieved [SecurityLevel] was determined. Only [attested] is
-/// cryptographic proof; every other value is an on-device self-report.
-enum TierEvidence {
-  attested,
-  keyInfoReadback,
-  seTokenPresent,
-  inferred,
-  selfReportUnverified,
-}
+/// How the achieved [SecurityLevel] was determined.
+enum TierEvidence { keyInfoReadback, seTokenPresent }
 
 /// The presence check requested for a key at generation. Three values; [none]
 /// creates a silent key. Distinct from [AuthClass], the four-value class read
@@ -46,8 +39,8 @@ enum AuthClass {
   deviceCredentialOnly,
 }
 
-/// A class in the tier partial order. [discreteSecure] covers Secure Enclave,
-/// StrongBox, and TPM, and outranks [trustedEnvironment].
+/// A class in the tier partial order. [discreteSecure] covers Secure Enclave and
+/// StrongBox, and outranks [trustedEnvironment].
 enum HardwareClass { discreteSecure, trustedEnvironment }
 
 /// The signature wire encoding.
@@ -63,13 +56,14 @@ enum AttestationFormat { androidKeyChain, none }
 /// is reported in [SecurityTierReport.achieved].
 ///
 /// Ordering is a partial order over classes: `discreteSecure {secureEnclave,
-/// strongBox, tpm} > tee > software`. `tpm` is not weaker than `tee`.
+/// strongBox} > trustedEnvironment {tee}`.
 sealed class TierPolicy {
   const TierPolicy();
 }
 
-/// The device's best hardware tier. Fails [SignetErrorCode.unavailableTier] if no
-/// hardware is available; never returns software.
+/// The strongest hardware tier available. Fails
+/// [SignetErrorCode.unavailableTier] when no secure hardware is reachable; never
+/// produces a software-backed key.
 class Strongest extends TierPolicy {
   const Strongest();
 }
@@ -81,12 +75,6 @@ class AtLeast extends TierPolicy {
   final HardwareClass floor;
 }
 
-/// Never fails on tier where a software keystore exists; may then return a weaker
-/// level with `meetsFloor == false` and honest evidence.
-class BestEffort extends TierPolicy {
-  const BestEffort();
-}
-
 /// One report shape for every operation that reads a key's tier. [requested] and
 /// [authEnforced] are null on a `getSecurityTier` re-read, where the policy is not
 /// stored with the key and the platform may not read the created access control
@@ -95,7 +83,6 @@ class SecurityTierReport {
   const SecurityTierReport({
     required this.achieved,
     required this.requested,
-    required this.meetsFloor,
     required this.evidence,
     required this.authEnforced,
     required this.invalidated,
@@ -104,7 +91,6 @@ class SecurityTierReport {
 
   final SecurityLevel achieved;
   final TierPolicy? requested;
-  final bool meetsFloor;
   final TierEvidence evidence;
   final AuthClass? authEnforced;
   final bool invalidated;
@@ -220,10 +206,10 @@ class Signet {
   final SignetHostApi _host;
 
   /// Generates a non-exportable P-256 key at [alias]. [tierPolicy] selects by
-  /// class (default [Strongest]); a hard policy below its floor fails
-  /// [SignetErrorCode.unavailableTier], while [BestEffort] never fails on tier and
-  /// its report carries `meetsFloor == false`. [authRequirement] binds a presence
-  /// check to the key (default [AuthRequirement.none], a silent key); a gated key
+  /// class (default [Strongest]); a policy below its floor fails
+  /// [SignetErrorCode.unavailableTier] and no key is kept. [authRequirement] binds
+  /// a presence check to the key (default [AuthRequirement.none], a silent key); a
+  /// gated key
   /// needs an [AuthPrompt] at [sign]. [authValiditySeconds] sets an auth reuse
   /// window (null and 0 mean per-use); [invalidateOnBiometricEnrollment] makes a
   /// later biometric enrollment invalidate the key. An existing alias fails
@@ -332,7 +318,6 @@ class Signet {
     return SecurityTierReport(
       achieved: _securityLevelFrom(wire.achieved),
       requested: _tierPolicyFrom(wire.requestedKind, wire.requestedAtLeastClass),
-      meetsFloor: wire.meetsFloor,
       evidence: _evidenceFrom(wire.evidence),
       authEnforced:
           wire.authEnforced == null ? null : _authClassFrom(wire.authEnforced!),
@@ -352,7 +337,6 @@ SignetErrorCode _codeFrom(String code) {
 TierPolicyKindWire _tierKindTo(TierPolicy policy) => switch (policy) {
       Strongest() => TierPolicyKindWire.strongest,
       AtLeast() => TierPolicyKindWire.atLeast,
-      BestEffort() => TierPolicyKindWire.bestEffort,
     };
 
 TierPolicy? _tierPolicyFrom(
@@ -363,7 +347,6 @@ TierPolicy? _tierPolicyFrom(
       null => null,
       TierPolicyKindWire.strongest => const Strongest(),
       TierPolicyKindWire.atLeast => AtLeast(_hardwareClassFrom(atLeastClass!)),
-      TierPolicyKindWire.bestEffort => const BestEffort(),
     };
 
 HardwareClassWire _hardwareClassTo(HardwareClass value) => switch (value) {
@@ -380,16 +363,11 @@ SecurityLevel _securityLevelFrom(SecurityLevelWire value) => switch (value) {
       SecurityLevelWire.secureEnclave => SecurityLevel.secureEnclave,
       SecurityLevelWire.strongBox => SecurityLevel.strongBox,
       SecurityLevelWire.tee => SecurityLevel.tee,
-      SecurityLevelWire.tpm => SecurityLevel.tpm,
-      SecurityLevelWire.software => SecurityLevel.software,
     };
 
 TierEvidence _evidenceFrom(TierEvidenceWire value) => switch (value) {
-      TierEvidenceWire.attested => TierEvidence.attested,
       TierEvidenceWire.keyInfoReadback => TierEvidence.keyInfoReadback,
       TierEvidenceWire.seTokenPresent => TierEvidence.seTokenPresent,
-      TierEvidenceWire.inferred => TierEvidence.inferred,
-      TierEvidenceWire.selfReportUnverified => TierEvidence.selfReportUnverified,
     };
 
 AuthClass _authClassFrom(AuthClassWire value) => switch (value) {

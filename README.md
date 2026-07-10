@@ -10,7 +10,7 @@ Signet is a signing-key mechanism, not a wallet and not a policy engine. It crea
 
 - Generate a non-exportable, hardware-backed P-256 key.
 - Sign a 32-byte digest (ECDSA; DER or raw r‖s), gated by biometric / device auth.
-- Report the achieved security tier (`secureEnclave | strongBox | tee | tpm | software`) with the `evidence` behind it, never a claim stronger than the hardware delivered.
+- Report the achieved security tier (`secureEnclave | strongBox | tee`) with the `evidence` behind it, never a claim stronger than the hardware delivered.
 - Produce key attestation for a remote verifier. It produces attestation; it does not verify it.
 
 Private keys never leave hardware; no export path exists in any surface. The library holds no keys and runs no server.

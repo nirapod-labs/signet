@@ -23,7 +23,7 @@ void main() {
 
     await signet.delete(alias);
     final (KeyHandle handle, SecurityTierReport report) =
-        await signet.generateKey(alias: alias, tierPolicy: const BestEffort());
+        await signet.generateKey(alias: alias, tierPolicy: const Strongest());
     expect(report.evidence, isNotNull);
 
     final publicKey = await signet.getPublicKey(handle);
@@ -47,7 +47,7 @@ void main() {
     await signet.delete(alias);
     final (KeyHandle handle, SecurityTierReport report) = await signet.generateKey(
       alias: alias,
-      tierPolicy: const BestEffort(),
+      tierPolicy: const Strongest(),
       authRequirement: AuthRequirement.biometricOnly,
     );
     expect(handle.id, alias);

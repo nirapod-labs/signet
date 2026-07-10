@@ -100,30 +100,24 @@ int _deepHash(Object? value) {
 
 
 /// Hardware backing a key, reported as achieved and never assumed from the
-/// request. Crosses the channel as a pinned token, not an ordinal.
+/// request. Generated per build and crosses the channel as its declared ordinal,
+/// so append new members and never reorder.
 enum SecurityLevelWire {
   secureEnclave,
   strongBox,
   tee,
-  tpm,
-  software,
 }
 
-/// How the achieved level was determined. Only `attested` is cryptographic
-/// proof; every other value is an on-device self-report.
+/// How the achieved level was determined.
 enum TierEvidenceWire {
-  attested,
   keyInfoReadback,
   seTokenPresent,
-  inferred,
-  selfReportUnverified,
 }
 
 /// The tier-selection policy kind. `atLeast` carries its class in [KeySpecWire].
 enum TierPolicyKindWire {
   strongest,
   atLeast,
-  bestEffort,
 }
 
 /// A class in the tier partial order; `discreteSecure` outranks
@@ -261,7 +255,6 @@ class SecurityTierReportWire {
     required this.achieved,
     this.requestedKind,
     this.requestedAtLeastClass,
-    required this.meetsFloor,
     required this.evidence,
     this.authEnforced,
     required this.invalidated,
@@ -273,8 +266,6 @@ class SecurityTierReportWire {
   TierPolicyKindWire? requestedKind;
 
   HardwareClassWire? requestedAtLeastClass;
-
-  bool meetsFloor;
 
   TierEvidenceWire evidence;
 
@@ -289,7 +280,6 @@ class SecurityTierReportWire {
       achieved,
       requestedKind,
       requestedAtLeastClass,
-      meetsFloor,
       evidence,
       authEnforced,
       invalidated,
@@ -306,11 +296,10 @@ class SecurityTierReportWire {
       achieved: result[0]! as SecurityLevelWire,
       requestedKind: result[1] as TierPolicyKindWire?,
       requestedAtLeastClass: result[2] as HardwareClassWire?,
-      meetsFloor: result[3]! as bool,
-      evidence: result[4]! as TierEvidenceWire,
-      authEnforced: result[5] as AuthClassWire?,
-      invalidated: result[6]! as bool,
-      schemaVersion: result[7]! as int,
+      evidence: result[3]! as TierEvidenceWire,
+      authEnforced: result[4] as AuthClassWire?,
+      invalidated: result[5]! as bool,
+      schemaVersion: result[6]! as int,
     );
   }
 
@@ -323,7 +312,7 @@ class SecurityTierReportWire {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(achieved, other.achieved) && _deepEquals(requestedKind, other.requestedKind) && _deepEquals(requestedAtLeastClass, other.requestedAtLeastClass) && _deepEquals(meetsFloor, other.meetsFloor) && _deepEquals(evidence, other.evidence) && _deepEquals(authEnforced, other.authEnforced) && _deepEquals(invalidated, other.invalidated) && _deepEquals(schemaVersion, other.schemaVersion);
+    return _deepEquals(achieved, other.achieved) && _deepEquals(requestedKind, other.requestedKind) && _deepEquals(requestedAtLeastClass, other.requestedAtLeastClass) && _deepEquals(evidence, other.evidence) && _deepEquals(authEnforced, other.authEnforced) && _deepEquals(invalidated, other.invalidated) && _deepEquals(schemaVersion, other.schemaVersion);
   }
 
   @override
@@ -332,7 +321,7 @@ class SecurityTierReportWire {
 
   @override
   String toString() {
-    return 'SecurityTierReportWire(achieved: $achieved, requestedKind: $requestedKind, requestedAtLeastClass: $requestedAtLeastClass, meetsFloor: $meetsFloor, evidence: $evidence, authEnforced: $authEnforced, invalidated: $invalidated, schemaVersion: $schemaVersion)';
+    return 'SecurityTierReportWire(achieved: $achieved, requestedKind: $requestedKind, requestedAtLeastClass: $requestedAtLeastClass, evidence: $evidence, authEnforced: $authEnforced, invalidated: $invalidated, schemaVersion: $schemaVersion)';
   }
 }
 

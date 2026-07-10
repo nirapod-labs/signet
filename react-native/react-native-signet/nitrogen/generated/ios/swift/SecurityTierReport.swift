@@ -18,7 +18,7 @@ public extension SecurityTierReport {
   /**
    * Create a new instance of `SecurityTierReport`.
    */
-  init(achieved: SecurityLevel, requestedKind: TierPolicyKind?, requestedAtLeastClass: HardwareClass?, meetsFloor: Bool, evidence: TierEvidence, authEnforced: AuthClass?, invalidated: Bool, schemaVersion: Double) {
+  init(achieved: SecurityLevel, requestedKind: TierPolicyKind?, requestedAtLeastClass: HardwareClass?, evidence: TierEvidence, authEnforced: AuthClass?, invalidated: Bool, schemaVersion: Double) {
     self.init(achieved, { () -> bridge.std__optional_TierPolicyKind_ in
       if let __unwrappedValue = requestedKind {
         return bridge.create_std__optional_TierPolicyKind_(__unwrappedValue)
@@ -31,7 +31,7 @@ public extension SecurityTierReport {
       } else {
         return .init()
       }
-    }(), meetsFloor, evidence, { () -> bridge.std__optional_AuthClass_ in
+    }(), evidence, { () -> bridge.std__optional_AuthClass_ in
       if let __unwrappedValue = authEnforced {
         return bridge.create_std__optional_AuthClass_(__unwrappedValue)
       } else {
@@ -53,11 +53,6 @@ public extension SecurityTierReport {
   @inline(__always)
   var requestedAtLeastClass: HardwareClass? {
     return self.__requestedAtLeastClass.value
-  }
-  
-  @inline(__always)
-  var meetsFloor: Bool {
-    return self.__meetsFloor
   }
   
   @inline(__always)

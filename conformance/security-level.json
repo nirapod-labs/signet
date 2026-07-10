@@ -1,21 +1,20 @@
 {
   "schemaVersion": 1,
   "securityLevel": {
-    "values": ["secureEnclave", "strongBox", "tee", "tpm", "software"],
-    "description": "The hardware backing a signing key. Always reported as the ACHIEVED level, read back from the created key, never assumed from the request."
+    "values": ["secureEnclave", "strongBox", "tee"],
+    "description": "The hardware backing a signing key. Always the ACHIEVED level, read back from the created key, never assumed from the request. Signet is hardware-only: it fails closed (throws unavailableTier) when no secure hardware is reachable and never produces a software-backed key."
   },
   "tierEvidence": {
-    "values": ["attested", "keyInfoReadback", "seTokenPresent", "inferred", "selfReportUnverified"],
-    "description": "How the achieved SecurityLevel was determined. A hardware level with evidence != 'attested' is an on-device self-report, not proof."
+    "values": ["keyInfoReadback", "seTokenPresent"],
+    "description": "How the achieved SecurityLevel was determined. Both values are on-device self-reports read from the created key (KeyInfo readback on Android, Secure Enclave token presence on Apple), not remote cryptographic proof."
   },
   "partialOrder": {
-    "description": "meetsFloor derives from a partial order over tier CLASSES, not a global ordinal. tpm is NOT weaker than tee.",
+    "description": "The order over tier CLASSES that the atLeast(HardwareClass) floor enforces. discreteSecure ranks above trustedEnvironment; a floor is met by an equal-or-higher class and otherwise fails closed (throws unavailableTier).",
     "classes": {
-      "discreteSecure": ["secureEnclave", "strongBox", "tpm"],
-      "trustedEnvironment": ["tee"],
-      "software": ["software"]
+      "discreteSecure": ["secureEnclave", "strongBox"],
+      "trustedEnvironment": ["tee"]
     },
-    "order": ["discreteSecure", "trustedEnvironment", "software"],
+    "order": ["discreteSecure", "trustedEnvironment"],
     "defaultPolicy": "strongest (TierPolicy; see shapes.json)"
   }
 }

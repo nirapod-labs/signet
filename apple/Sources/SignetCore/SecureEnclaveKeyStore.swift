@@ -9,8 +9,9 @@ import Security
 ///
 /// Keys are created non-exportable in the Secure Enclave. There is no export
 /// path: the outputs are a handle, a public key (separate surface), a signature,
-/// and attestation, never private-key bytes. Secure Enclave creation failure
-/// raises `unavailableTier`; the store never falls back to software.
+/// and attestation, never private-key bytes. When the Secure Enclave cannot
+/// create the key the store fails closed with `unavailableTier` and never
+/// produces a software-backed key.
 public struct SecureEnclaveKeyStore: Sendable {
     /// Namespaces the application tag so Signet keys do not collide with other
     /// keychain items in the app's access group.
@@ -26,7 +27,7 @@ public struct SecureEnclaveKeyStore: Sendable {
     /// spec's access-control policy.
     ///
     /// - Returns: the key handle and a tier report read from what was created
-    ///   (`achieved`, `evidence`, `meetsFloor`, `authEnforced`).
+    ///   (`achieved`, `evidence`, `authEnforced`).
     /// - Throws: `keyAlreadyExists` if the alias is taken; `unavailableTier` if
     ///   the Secure Enclave cannot create the key; `hardwareError` if the
     ///   access-control object cannot be built.
@@ -58,7 +59,7 @@ public struct SecureEnclaveKeyStore: Sendable {
 
         var cfError: Unmanaged<CFError>?
         guard SecKeyCreateRandomKey(attributes as CFDictionary, &cfError) != nil else {
-            // Never fall back to software. Map the failure cause honestly.
+            // Fail closed: map the creation failure honestly; never a software key.
             let code = (cfError?.takeRetainedValue()).map { CFErrorGetCode($0) } ?? 0
             throw Self.mapCreationFailure(code: code)
         }
@@ -66,10 +67,6 @@ public struct SecureEnclaveKeyStore: Sendable {
         let report = SecurityTierReport(
             achieved: .secureEnclave,
             requested: spec.tierPolicy,
-            meetsFloor: spec.tierPolicy.isMet(
-                by: .secureEnclave,
-                platformStrongest: .secureEnclave
-            ),
             evidence: .seTokenPresent,
             authEnforced: Self.authClass(for: spec.accessControl),
             invalidated: false
@@ -270,8 +267,7 @@ public struct SecureEnclaveKeyStore: Sendable {
     /// ordinary authentication failure at signing time, with no dedicated code,
     /// and `sign` discards the underlying error and maps every failure to
     /// `hardwareError`, never `keyInvalidated`. This weaker probing is
-    /// contract-allowed. `meetsFloor` is true against every policy (the Secure
-    /// Enclave is Apple's strongest tier).
+    /// contract-allowed.
     ///
     /// - Throws: `notFound` if no key exists for the alias.
     public func getSecurityTier(_ handle: KeyHandle) throws -> SecurityTierReport {
@@ -281,7 +277,6 @@ public struct SecureEnclaveKeyStore: Sendable {
         return SecurityTierReport(
             achieved: .secureEnclave,
             requested: nil,
-            meetsFloor: true,
             evidence: .seTokenPresent,
             authEnforced: nil,
             invalidated: false
@@ -448,7 +443,8 @@ public struct SecureEnclaveKeyStore: Sendable {
     /// Maps a `SecKeyCreateRandomKey` failure code to the closed error set.
     /// `errSecInteractionNotAllowed` (locked device) is `hardwareError`, a
     /// transient platform failure, not a tier absence. `errSecDuplicateItem` is
-    /// `keyAlreadyExists`. Every other code is `unavailableTier`; never software.
+    /// `keyAlreadyExists`. Every other code is `unavailableTier`; never a
+    /// software-backed key.
     static func mapCreationFailure(code: Int) -> SignetError {
         switch code {
         case Int(errSecInteractionNotAllowed):

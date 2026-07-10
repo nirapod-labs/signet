@@ -12,10 +12,10 @@ The pure logic behind the store's guarantees runs green on every build,
 
 - The tier partial order and the `KeyInfo.getSecurityLevel` mapping: `strongest`
   accepts only the platform's best tier, a StrongBox fall-back to the TEE fails
-  closed, and an unknown Keystore level is never inflated to hardware
-  (`SecurityTierTest`).
-- The DER ECDSA to raw `r || s` decoder, over fixed and malformed vectors,
-  structurally identical to the Apple core (`DerSignatureTest`).
+  closed, and a software-backed or unknown Keystore level throws rather than
+  returning a software tier (`SecurityTierTest`).
+- The DER ECDSA to raw `r || s` decoder, over fixed and malformed vectors
+  (`DerSignatureTest`).
 - The digest guard: a non-32-byte digest is rejected with `invalidArgument`
   before any key access (`DigestGuardTest`).
 - The auth-gated serialization: a second concurrent gated sign is rejected while
@@ -44,8 +44,9 @@ connected device or a booted emulator:
   challenge yields `none`.
 - The existing-alias failure and idempotent `delete`.
 
-An emulator backs keys in the TEE or in software; it proves the mechanism but
-not a discrete-secure tier.
+An emulator that backs keys in the TEE proves the mechanism but not a
+discrete-secure tier; a software-only emulator has no secure hardware, so key
+generation there correctly fails closed rather than yielding a tier.
 
 ## Requires physical secure hardware or a UI lane
 
